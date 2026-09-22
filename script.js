@@ -145,8 +145,19 @@ async function apiRequest(path, options = {}){
   return data;
 }
 
-function getSupplies(){ return JSON.parse(localStorage.getItem('pd_supplies') || '[]'); }
-function setSupplies(list){ localStorage.setItem('pd_supplies', JSON.stringify(list)); }
+let suppliesCache = [];
+
+function normalizeSupply(s){
+  return {
+    id: s.id,
+    nombre: s.nombre,
+    cantidad: Number(s.cantidad),
+    unidad: s.unidad,
+    stockMinimo: Number(s.stock_minimo),
+    proveedor: s.proveedor || '',
+    actualizadoAt: s.actualizado_at
+  };
+}
 
 /* ---------------- UNIVERSAL: NAV + BADGE ---------------- */
 function updateCartBadge(){
@@ -818,79 +829,172 @@ function deleteProduct(id){
 }
 
 /* ---- Registro de materia prima (insumos) ---- */
-function openSupplyModal(id){
+
+async function loadSupplies(){
+  try {
+    const data = await apiRequest('/insumos');
+    suppliesCache = data.map(normalizeSupply);
+    return suppliesCache;
+  } catch(err) {
+    showToast(err.message);
+    suppliesCache = [];
+    return [];
+  }
+}
+
+function getSupplies(){
+  return suppliesCache;
+}
+
+async function openSupplyModal(id){
   editingSupplyId = id || null;
-  const s = id ? getSupplies().find(x=>x.id===id) : null;
-  document.getElementById('supplyModalTitle').textContent = s ? 'Editar insumo' : 'Nuevo insumo';
-  document.getElementById('supplyName').value = s ? s.nombre : '';
-  document.getElementById('supplyQty').value = s ? s.cantidad : '';
-  document.getElementById('supplyUnit').value = s ? s.unidad : 'kg';
-  document.getElementById('supplyMin').value = s ? s.stockMinimo : '';
-  document.getElementById('supplyProveedor').value = s ? (s.proveedor || '') : '';
+
+  if(suppliesCache.length === 0){
+    await loadSupplies();
+  }
+
+  const s = id
+    ? suppliesCache.find(x => String(x.id) === String(id))
+    : null;
+
+  document.getElementById('supplyModalTitle').textContent =
+    s ? 'Editar insumo' : 'Nuevo insumo';
+
+  document.getElementById('supplyName').value =
+    s ? s.nombre : '';
+
+  document.getElementById('supplyQty').value =
+    s ? s.cantidad : '';
+
+  document.getElementById('supplyUnit').value =
+    s ? s.unidad : 'kg';
+
+  document.getElementById('supplyMin').value =
+    s ? s.stockMinimo : '';
+
+  document.getElementById('supplyProveedor').value =
+    s ? s.proveedor : '';
+
   document.getElementById('supplyModal').classList.add('open');
 }
-function closeSupplyModal(){ document.getElementById('supplyModal').classList.remove('open'); }
 
-function submitSupplyForm(e){
+function closeSupplyModal(){
+  document.getElementById('supplyModal').classList.remove('open');
+}
+
+async function submitSupplyForm(e){
   e.preventDefault();
+
   const nombre = document.getElementById('supplyName').value.trim();
   const cantidad = Number(document.getElementById('supplyQty').value);
   const unidad = document.getElementById('supplyUnit').value;
-  const stockMinimo = Number(document.getElementById('supplyMin').value) || 0;
-  const proveedor = document.getElementById('supplyProveedor').value.trim();
+  const stockMinimo =
+    Number(document.getElementById('supplyMin').value) || 0;
+  const proveedor =
+    document.getElementById('supplyProveedor').value.trim();
 
-  if(!nombre || isNaN(cantidad) || cantidad<0){ showToast('Completa nombre y una cantidad válida'); return; }
-
-  const supplies = getSupplies();
-  const record = {
-    id: editingSupplyId || ('sup-'+Date.now()),
-    nombre, cantidad, unidad, stockMinimo, proveedor,
-    actualizadoAt: new Date().toLocaleString('es-PE')
-  };
-  if(editingSupplyId){
-    const idx = supplies.findIndex(s=>s.id===editingSupplyId);
-    if(idx>-1) supplies[idx] = record;
-  } else {
-    supplies.push(record);
-  }
-  setSupplies(supplies);
-  closeSupplyModal();
-  renderSupplies();
-  showToast(editingSupplyId ? 'Insumo actualizado' : 'Insumo registrado');
-}
-
-function deleteSupply(id){
-  if(!confirm('¿Eliminar este insumo del registro?')) return;
-  setSupplies(getSupplies().filter(s=>s.id!==id));
-  renderSupplies();
-  showToast('Insumo eliminado');
-}
-
-function renderSupplies(){
-  const tbody = document.getElementById('suppliesTableBody');
-  if(!tbody) return;
-  const supplies = getSupplies();
-  if(supplies.length===0){
-    tbody.innerHTML = '<tr><td colspan="6" class="hint" style="padding:16px 0;">Aún no registras insumos de materia prima.</td></tr>';
+  if(!nombre || isNaN(cantidad) || cantidad < 0){
+    showToast('Completa nombre y una cantidad válida');
     return;
   }
-  tbody.innerHTML = supplies.map(s=>{
-    const bajo = s.cantidad <= s.stockMinimo;
-    return `
-    <tr class="${bajo ? 'row-warning':''}">
-      <td>${s.nombre}</td>
-      <td>${s.cantidad} ${s.unidad}</td>
-      <td>${s.stockMinimo} ${s.unidad}</td>
-      <td>${s.proveedor || '—'}</td>
-      <td><span class="pill ${bajo ? 'pill-off':'pill-ok'}">${bajo ? 'Stock bajo':'Normal'}</span></td>
-      <td class="table-actions">
-        <button class="btn btn-outline btn-small" onclick="openSupplyModal('${s.id}')">Editar</button>
-        <button class="btn btn-small btn-danger" onclick="deleteSupply('${s.id}')">Eliminar</button>
-      </td>
-    </tr>`;
-  }).join('');
+
+  const record = {
+    nombre,
+    cantidad,
+    unidad,
+    stockMinimo,
+    proveedor
+  };
+
+  try {
+    if(editingSupplyId){
+      await apiRequest(`/insumos/${editingSupplyId}`, {
+        method: 'PUT',
+        body: JSON.stringify(record)
+      });
+
+      showToast('Insumo actualizado');
+    } else {
+      await apiRequest('/insumos', {
+        method: 'POST',
+        body: JSON.stringify(record)
+      });
+
+      showToast('Insumo registrado');
+    }
+
+    await loadSupplies();
+    closeSupplyModal();
+    renderSupplies();
+
+  } catch(err) {
+    showToast(err.message);
+  }
 }
 
+async function deleteSupply(id){
+  if(!confirm('¿Eliminar este insumo del registro?')) return;
+
+  try {
+    await apiRequest(`/insumos/${id}`, {
+      method: 'DELETE'
+    });
+
+    await loadSupplies();
+    renderSupplies();
+
+    showToast('Insumo eliminado');
+
+  } catch(err) {
+    showToast(err.message);
+  }
+}
+
+async function renderSupplies(){
+  const tbody = document.getElementById('suppliesTableBody');
+  if(!tbody) return;
+
+  await loadSupplies();
+
+  const supplies = getSupplies();
+
+  if(supplies.length === 0){
+    tbody.innerHTML =
+      '<tr><td colspan="6" class="hint" style="padding:16px 0;">Aún no registras insumos de materia prima.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = supplies.map(s => {
+    const bajo = s.cantidad <= s.stockMinimo;
+
+    return `
+      <tr class="${bajo ? 'row-warning' : ''}">
+        <td>${s.nombre}</td>
+        <td>${s.cantidad} ${s.unidad}</td>
+        <td>${s.stockMinimo} ${s.unidad}</td>
+        <td>${s.proveedor || '—'}</td>
+        <td>
+          <span class="pill ${bajo ? 'pill-off' : 'pill-ok'}">
+            ${bajo ? 'Stock bajo' : 'Normal'}
+          </span>
+        </td>
+        <td class="table-actions">
+          <button
+            class="btn btn-outline btn-small"
+            onclick="openSupplyModal(${s.id})">
+            Editar
+          </button>
+
+          <button
+            class="btn btn-small btn-danger"
+            onclick="deleteSupply(${s.id})">
+            Eliminar
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
 /* ---- Registro de órdenes de compra de insumos ---- */
 function getPurchaseOrders(){ return JSON.parse(localStorage.getItem('pd_purchase_orders') || '[]'); }
 function setPurchaseOrders(list){ localStorage.setItem('pd_purchase_orders', JSON.stringify(list)); }
