@@ -1094,8 +1094,15 @@ async function renderSupplies(){
   }).join('');
 }
 /* ---- Registro de órdenes de compra de insumos ---- */
-function getPurchaseOrders(){ return JSON.parse(localStorage.getItem('pd_purchase_orders') || '[]'); }
-function setPurchaseOrders(list){ localStorage.setItem('pd_purchase_orders', JSON.stringify(list)); }
+async function getPurchaseOrders(){
+  try {
+    return await apiRequest('/compras');
+  } catch(error) {
+    console.error('Error al obtener órdenes de compra:', error);
+    showToast(error.message || 'No se pudieron cargar las órdenes de compra');
+    return [];
+  }
+}
 
 function populatePurchaseInsumoSelect(){
   const select = document.getElementById('purchaseInsumo');
@@ -1114,8 +1121,9 @@ function openPurchaseModal(){
 }
 function closePurchaseModal(){ document.getElementById('purchaseModal').classList.remove('open'); }
 
-function submitPurchaseForm(e){
+async function submitPurchaseForm(e){
   e.preventDefault();
+
   const insumoSel = document.getElementById('purchaseInsumo').value;
   const nuevoNombre = document.getElementById('purchaseNuevoNombre').value.trim();
   const cantidad = Number(document.getElementById('purchaseCantidad').value);
@@ -1123,18 +1131,87 @@ function submitPurchaseForm(e){
   const tienda = document.getElementById('purchaseTienda').value.trim();
   const fecha = document.getElementById('purchaseFecha').value;
 
-  if(isNaN(cantidad) || cantidad<=0){ showToast('Indica una cantidad comprada válida'); return; }
-  if(insumoSel==='__otro' && !nuevoNombre){ showToast('Indica el nombre del insumo nuevo'); return; }
+  if(!cantidad || cantidad <= 0){
+    showToast('Indica una cantidad comprada válida');
+    return;
+  }
 
-  const supplies = getSupplies();
-  let insumoNombre, unidad;
+  if(insumoSel === '__otro' && !nuevoNombre){
+    showToast('Indica el nombre del insumo nuevo');
+    return;
+  }
 
-  if(insumoSel==='__otro'){
+  let insumoId = null;
+  let insumoNombre = '';
+  let unidad = 'unidades';
+
+  if(insumoSel !== '__otro'){
+
+    insumoId = Number(insumoSel);
+
+    const supplies = getSupplies();
+
+    const supply = supplies.find(
+      s => String(s.id) === String(insumoSel)
+    );
+
+    if(!supply){
+      showToast('No se encontró el insumo seleccionado');
+      return;
+    }
+
+    insumoNombre = supply.nombre;
+    unidad = supply.unidad || 'unidades';
+
+  } else {
+
+    insumoNombre = nuevoNombre;
     unidad = 'unidades';
-    const nuevoInsumo = {
-      id: 'sup-'+Date.now(), nombre: nuevoNombre, cantidad, unidad, stockMinimo: 0, proveedor: tienda,
-      actualizadoAt: new Date().toLocaleString('es-PE')
-    };
+  }
+
+  const fechaISO = fecha
+    ? new Date(fecha + 'T12:00:00').toISOString()
+    : new Date().toISOString();
+
+  const session = getSession();
+
+  try {
+
+    await apiRequest('/compras', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: 'OC-' + Date.now(),
+        insumoId,
+        insumoNombre,
+        cantidad,
+        unidad,
+        costo,
+        tienda,
+        fecha: fecha || new Date().toISOString().slice(0,10),
+        fechaISO,
+        registradoPor: (session && session.nombre) || '-'
+      })
+    });
+
+    await loadSupplies();
+
+    closePurchaseModal();
+
+    await renderPurchaseOrders();
+
+    renderSupplies();
+
+    showToast('Orden de compra registrada y stock actualizado');
+
+  } catch(error) {
+
+    console.error('Error al registrar orden de compra:', error);
+
+    showToast(
+      error.message || 'No se pudo registrar la orden de compra'
+    );
+  }
+}
     supplies.push(nuevoInsumo);
     insumoNombre = nuevoNombre;
   } else {
@@ -1165,7 +1242,7 @@ function submitPurchaseForm(e){
   showToast('Orden de compra registrada y stock actualizado');
 }
 
-function renderPurchaseOrders(){
+async function renderPurchaseOrders(){
   const tbody = document.getElementById('purchaseOrdersBody');
   if(!tbody) return;
   const soloSemana = soloSemanaParaRolActual();
@@ -1177,7 +1254,7 @@ function renderPurchaseOrders(){
       : 'Historial completo (vista de administrador).';
   }
 
-  const allCompras = getPurchaseOrders();
+const allCompras = await getPurchaseOrders();
   const compras = soloSemana ? allCompras.filter(c=>isInCurrentWeek(c.fechaISO)) : allCompras;
 
   if(compras.length===0){
