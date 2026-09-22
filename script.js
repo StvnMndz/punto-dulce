@@ -194,6 +194,7 @@ function labelForCat(cat){
 
 async function renderProducts(filter='todos'){
   const grid = document.getElementById('productGrid');
+
   if(!grid) return;
 
   grid.innerHTML = '<p class="hint">Cargando productos...</p>';
