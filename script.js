@@ -799,24 +799,46 @@ async function renderAdminProducts(){
   `).join('');
 }
 
-function openProductModal(id){
+async function openProductModal(id){
   editingProductId = id || null;
-  const p = id ? getProducts().find(x=>x.id===id) : null;
-  document.getElementById('productModalTitle').textContent = p ? 'Editar producto' : 'Nuevo producto';
-  document.getElementById('productName').value = p ? p.name : '';
-  document.getElementById('productCat').value = p ? p.cat : 'cupcake';
-  document.getElementById('productDesc').value = p ? p.desc : '';
-  document.getElementById('productPrice').value = p ? p.price : '';
-  document.getElementById('productIcon').value = p ? (p.icon || '🍰') : '🍰';
-  document.getElementById('productCustomizable').checked = p ? !!p.customizable : false;
-  document.getElementById('productDisponible').checked = p ? p.disponible!==false : true;
-  document.getElementById('customPriceHint').style.display = (p && p.customizable) ? 'block' : 'none';
+
+  const products = await getProducts();
+  const p = id ? products.find(x => x.id === id) : null;
+
+  document.getElementById('productModalTitle').textContent =
+    p ? 'Editar producto' : 'Nuevo producto';
+
+  document.getElementById('productName').value =
+    p ? p.name : '';
+
+  document.getElementById('productCat').value =
+    p ? p.cat : 'cupcake';
+
+  document.getElementById('productDesc').value =
+    p ? p.desc : '';
+
+  document.getElementById('productPrice').value =
+    p ? p.price : '';
+
+  document.getElementById('productIcon').value =
+    p ? (p.icon || '🍰') : '🍰';
+
+  document.getElementById('productCustomizable').checked =
+    p ? !!p.customizable : false;
+
+  document.getElementById('productDisponible').checked =
+    p ? p.disponible !== false : true;
+
+  document.getElementById('customPriceHint').style.display =
+    (p && p.customizable) ? 'block' : 'none';
+
   document.getElementById('productModal').classList.add('open');
 }
 function closeProductModal(){ document.getElementById('productModal').classList.remove('open'); }
 
-function submitProductForm(e){
+async function submitProductForm(e){
   e.preventDefault();
+
   const name = document.getElementById('productName').value.trim();
   const cat = document.getElementById('productCat').value;
   const desc = document.getElementById('productDesc').value.trim();
@@ -825,31 +847,78 @@ function submitProductForm(e){
   const customizable = document.getElementById('productCustomizable').checked;
   const disponible = document.getElementById('productDisponible').checked;
 
-  if(!name || !price || price<=0){ showToast('Completa nombre y un precio válido'); return; }
-
-  const products = getProducts();
-  if(editingProductId){
-    const idx = products.findIndex(p=>p.id===editingProductId);
-    if(idx>-1){
-      products[idx] = {...products[idx], name, cat, desc, price, icon, customizable, disponible, media:'media-'+cat};
-    }
-  } else {
-    products.push({
-      id:'prod-'+Date.now(), name, cat, desc, price, icon, customizable, disponible, media:'media-'+cat
-    });
+  if(!name || !price || price <= 0){
+    showToast('Completa nombre y un precio válido');
+    return;
   }
-  setProducts(products);
-  closeProductModal();
-  renderAdminProducts();
-  renderStats();
-  showToast(editingProductId ? 'Producto actualizado' : 'Producto agregado al catálogo');
+
+  const wasEditing = !!editingProductId;
+
+  try {
+    if(wasEditing){
+      await apiRequest('/productos/' + encodeURIComponent(editingProductId), {
+        method: 'PUT',
+        body: JSON.stringify({
+          name,
+          cat,
+          desc,
+          price,
+          icon,
+          customizable,
+          disponible,
+          media: 'media-' + cat
+        })
+      });
+    } else {
+      await apiRequest('/productos', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'prod-' + Date.now(),
+          name,
+          cat,
+          desc,
+          price,
+          icon,
+          customizable,
+          disponible,
+          media: 'media-' + cat
+        })
+      });
+    }
+
+    closeProductModal();
+    await renderAdminProducts();
+    renderStats();
+
+    showToast(
+      wasEditing
+        ? 'Producto actualizado'
+        : 'Producto agregado al catálogo'
+    );
+
+  } catch(error) {
+    console.error('Error al guardar producto:', error);
+    showToast(error.message || 'No se pudo guardar el producto');
+  }
 }
 
-function deleteProduct(id){
+async function deleteProduct(id){
   if(!confirm('¿Eliminar este producto del catálogo?')) return;
-  setProducts(getProducts().filter(p=>p.id!==id));
-  renderAdminProducts();
-  showToast('Producto eliminado');
+
+  try {
+    await apiRequest('/productos/' + encodeURIComponent(id), {
+      method: 'DELETE'
+    });
+
+    await renderAdminProducts();
+    renderStats();
+
+    showToast('Producto eliminado');
+
+  } catch(error) {
+    console.error('Error al eliminar producto:', error);
+    showToast(error.message || 'No se pudo eliminar el producto');
+  }
 }
 
 /* ---- Registro de materia prima (insumos) ---- */
