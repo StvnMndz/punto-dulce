@@ -192,11 +192,16 @@ function labelForCat(cat){
   return CATEGORY_LABELS[cat] || cat;
 }
 
-function renderProducts(filter='todos'){
+async function renderProducts(filter='todos'){
   const grid = document.getElementById('productGrid');
   if(!grid) return;
+
+  grid.innerHTML = '<p class="hint">Cargando productos...</p>';
+
+  const products = (await getProducts())
+    .filter(p => p.disponible !== false);
+
   grid.innerHTML = '';
-  const products = getProducts().filter(p => p.disponible !== false);
   products.filter(p => filter==='todos' || p.cat===filter).forEach(p=>{
     const card = document.createElement('div');
     card.className = 'product-card';
