@@ -87,15 +87,15 @@ function setCart(cart){ localStorage.setItem('pd_cart', JSON.stringify(cart)); u
 function getOrders(){ return JSON.parse(localStorage.getItem('pd_orders') || '[]'); }
 function setOrders(orders){ localStorage.setItem('pd_orders', JSON.stringify(orders)); }
 
-function getProducts(){
-  let stored = localStorage.getItem('pd_products');
-  if(!stored){
-    setProducts(DEFAULT_PRODUCTS);
-    return JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+async function getProducts(){
+  try {
+    return await apiRequest('/productos');
+  } catch (error) {
+    console.error('Error al obtener productos:', error);
+    showToast('No se pudieron cargar los productos');
+    return [];
   }
-  return JSON.parse(stored);
 }
-function setProducts(products){ localStorage.setItem('pd_products', JSON.stringify(products)); }
 
 /* ---------------- SESIÓN DE EMPLEADO (Backend + MySQL) ----------------
    El registro, login y roles del personal ya NO se guardan en este
