@@ -45,3 +45,18 @@ VALUES (
   1
 )
 ON DUPLICATE KEY UPDATE usuario = usuario;
+
+-- =========================================================
+-- Tabla de insumos / materia prima
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS insumos (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  nombre          VARCHAR(150) NOT NULL,
+  cantidad        DECIMAL(10,2) NOT NULL DEFAULT 0,
+  unidad          VARCHAR(30) NOT NULL,
+  stock_minimo    DECIMAL(10,2) NOT NULL DEFAULT 0,
+  proveedor       VARCHAR(150) NULL,
+  actualizado_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                  ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
