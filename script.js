@@ -202,24 +202,42 @@ async function renderProducts(filter='todos'){
     .filter(p => p.disponible !== false);
 
   grid.innerHTML = '';
+
   products.filter(p => filter==='todos' || p.cat===filter).forEach(p=>{
     const card = document.createElement('div');
+
     card.className = 'product-card';
+
     card.innerHTML = `
       <div class="product-media ${p.media}">${p.icon}</div>
+
       <div class="product-body">
         <span class="product-tag">${labelForCat(p.cat)}</span>
+
         <h3>${p.name}</h3>
+
         <p class="desc">${p.desc}</p>
+
         <div class="product-footer">
-          <span class="price">${p.customizable ? 'Desde ' : ''}S/ ${p.price.toFixed(2)}</span>
-          <button class="btn ${p.customizable ? 'btn-primary' : 'btn-outline'} btn-small">${p.customizable ? 'Personalizar' : 'Agregar'}</button>
+          <span class="price">
+            ${p.customizable ? 'Desde ' : ''}S/ ${p.price.toFixed(2)}
+          </span>
+
+          <button class="btn ${p.customizable ? 'btn-primary' : 'btn-outline'} btn-small">
+            ${p.customizable ? 'Personalizar' : 'Agregar'}
+          </button>
         </div>
       </div>
     `;
+
     card.querySelector('button').addEventListener('click', ()=>{
-      if(p.customizable){ openCustomize(p); } else { addSimpleToCart(p); }
+      if(p.customizable){
+        openCustomize(p);
+      } else {
+        addSimpleToCart(p);
+      }
     });
+
     grid.appendChild(card);
   });
 }
