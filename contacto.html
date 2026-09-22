@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contacto · Punto Dulce</title>
+<meta name="description" content="Comunícate con Punto Dulce por WhatsApp, correo o visítanos en nuestro local.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="nav">
+    <a href="index.html" class="logo">🍰 Punto<span>Dulce</span></a>
+    <ul id="navLinks">
+      <li><a href="index.html">Inicio</a></li>
+      <li><a href="catalogo.html">Catálogo</a></li>
+      <li><a href="como-pedir.html">Cómo pedir</a></li>
+      <li><a href="pedido.html">Hacer pedido</a></li>
+      <li><a href="seguimiento.html">Mis pedidos</a></li>
+      <li><a href="nosotros.html">Nosotros</a></li>
+      <li><a href="contacto.html" class="active">Contacto</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a class="staff-link" href="empleado-login.html">Acceso personal</a>
+      <a class="cart-btn" href="pedido.html">
+        🛒 Pedido <span class="cart-count" id="cartCount">0</span>
+      </a>
+      <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú">☰</button>
+    </div>
+  </div>
+</header>
+<section class="page-hero">
+  <div class="wrap">
+    <div class="breadcrumb"><a href="index.html">Inicio</a> <span>/</span> <span>Contacto</span></div>
+    <h1>Hablemos</h1>
+    <p>¿Tienes dudas sobre tu pedido, quieres coordinar un evento o dejarnos un mensaje? Escríbenos por aquí.</p>
+  </div>
+</section>
+<section>
+  <div class="wrap">
+    <div class="contact-layout">
+      <div class="contact-card">
+        <h3>Información de contacto</h3>
+        <div class="contact-row">
+          <span class="ic">📱</span>
+          <div>WhatsApp<span>987 654 321</span></div>
+        </div>
+        <div class="contact-row">
+          <span class="ic">✉️</span>
+          <div>Correo<span>correo@puntodulce.pe</span></div>
+        </div>
+        <div class="contact-row">
+          <span class="ic">📍</span>
+          <div>Ubicación<span>Lima, Perú</span></div>
+        </div>
+        <div class="contact-row">
+          <span class="ic">🕒</span>
+          <div>Horario<span>Lun–Sáb 9:00 am–8:00 pm · Dom 10:00 am–4:00 pm</span></div>
+        </div>
+        <div class="map-note">📍 Aquí puede ir un mapa embebido de tu local físico.</div>
+      </div>
+
+      <div class="contact-card contact-form">
+        <h3>Envíanos un mensaje</h3>
+        <div class="field">
+          <label for="contNombre">Nombre</label>
+          <input type="text" id="contNombre" placeholder="Tu nombre">
+        </div>
+        <div class="field">
+          <label for="contCorreo">Correo o teléfono</label>
+          <input type="text" id="contCorreo" placeholder="¿Cómo te contactamos?">
+        </div>
+        <div class="field">
+          <label for="contMensaje">Mensaje</label>
+          <textarea id="contMensaje" placeholder="Cuéntanos qué necesitas..."></textarea>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="showToast('¡Gracias! Te responderemos pronto.')">Enviar mensaje</button>
+      </div>
+    </div>
+  </div>
+</section>
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <h4>🍰 Punto Dulce</h4>
+        <p>Repostería mixta con local físico, delivery y pedidos por encargo. Catálogo, personalización y seguimiento, todo en un solo lugar.</p>
+      </div>
+      <div>
+        <h4>Explorar</h4>
+        <ul>
+          <li><a href="catalogo.html">Catálogo</a></li>
+          <li><a href="como-pedir.html">Cómo pedir</a></li>
+          <li><a href="pedido.html">Hacer pedido</a></li>
+          <li><a href="seguimiento.html">Mis pedidos</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contacto</h4>
+        <ul>
+          <li>WhatsApp: 987 654 321</li>
+          <li>correo@puntodulce.pe</li>
+          <li>Lima, Perú</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Horario</h4>
+        <ul>
+          <li>Lun – Sáb: 9:00 am – 8:00 pm</li>
+          <li>Domingo: 10:00 am – 4:00 pm</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 Punto Dulce — Proyecto de desarrollo web integrado.</div>
+  </div>
+</footer>
+<div class="toast" id="toast"></div>
+<script src="script.js"></script>
+</body>
+</html>

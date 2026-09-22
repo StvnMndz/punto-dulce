@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel del personal · Punto Dulce</title>
+<meta name="description" content="Panel del personal de Punto Dulce: catálogo, estadísticas de ventas, materia prima y pedidos.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body id="employeePanel">
+
+<header class="panel-header">
+  <div class="wrap">
+    <a href="index.html" class="logo" style="color:var(--white);">🍰 Punto<span>Dulce</span></a>
+    <div class="panel-who">
+      <span class="name" id="empNombre">—</span>
+      <span class="role" id="empCargo">—</span>
+    </div>
+    <div class="panel-header-actions">
+      <a class="btn btn-outline-light btn-small" href="index.html">Ver sitio público</a>
+      <button class="btn btn-yellow btn-small" id="logoutBtn">Cerrar sesión</button>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Panel del personal</h2>
+      <p>Administra el catálogo, revisa las estadísticas de ventas, lleva el registro de materia prima y da seguimiento a los pedidos.</p>
+    </div>
+
+    <div class="panel-tabs">
+      <button class="panel-tab active" data-panel="resumen">📊 Resumen</button>
+      <button class="panel-tab" data-panel="productos">🧁 Productos</button>
+      <button class="panel-tab" data-panel="insumos">🧺 Materia prima</button>
+      <button class="panel-tab" data-panel="pedidos">📦 Pedidos</button>
+      <button class="panel-tab" data-panel="personal">👥 Personal</button>
+    </div>
+
+    <div class="panel-pending-notice" id="pendingNotice" style="display:none;">
+      <h3>Tu cuenta está pendiente de asignación de rol</h3>
+      <p>Ya creaste tu cuenta de personal correctamente. Un administrador debe asignarte un rol (Administrador, Ventas / Atención o Producción) desde la pestaña "Personal" para que puedas usar el panel. Vuelve a ingresar más tarde o coméntaselo a un administrador.</p>
+    </div>
+
+    <!-- ================= RESUMEN / ESTADÍSTICAS ================= -->
+    <div class="panel-section show" id="panel-resumen">
+      <div class="panel-section-head">
+        <div>
+          <h2>Estadísticas de ventas</h2>
+          <p>Datos calculados a partir de los pedidos registrados en el sistema.</p>
+          <p class="hint" id="statsScopeNote" style="margin-top:4px;"></p>
+        </div>
+      </div>
+      <div class="stats-grid" id="statsCards"></div>
+      <div class="stats-panels">
+        <div class="stats-block">
+          <h3>Ventas por tipo de pedido</h3>
+          <div id="statsPorTipo"></div>
+        </div>
+        <div class="stats-block">
+          <h3>Productos más solicitados</h3>
+          <div id="statsTopProducts"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= PRODUCTOS ================= -->
+    <div class="panel-section" id="panel-productos">
+      <div class="panel-section-head">
+        <div>
+          <h2>Catálogo de productos</h2>
+          <p>Registra, edita u oculta los productos que se muestran en la página del cliente.</p>
+        </div>
+        <button class="btn btn-primary btn-small" id="btnNuevoProducto">+ Nuevo producto</button>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Producto</th><th>Categoría</th><th>Precio</th><th>Estado</th><th>Personalizable</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="productsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ================= MATERIA PRIMA ================= -->
+    <div class="panel-section" id="panel-insumos">
+      <div class="panel-section-head">
+        <div>
+          <h2>Registro de materia prima</h2>
+          <p>Controla el stock de insumos de producción y detecta a tiempo lo que está por agotarse.</p>
+        </div>
+        <button class="btn btn-primary btn-small" id="btnNuevoInsumo">+ Nuevo insumo</button>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Insumo</th><th>Cantidad</th><th>Stock mínimo</th><th>Proveedor</th><th>Estado</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="suppliesTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="panel-section-head" style="margin-top:32px;">
+        <div>
+          <h2>Órdenes de compra</h2>
+          <p>Registra cada vez que se compran insumos en la tienda. La cantidad se suma automáticamente al stock.</p>
+          <p class="hint" id="comprasScopeNote" style="margin-top:4px;"></p>
+        </div>
+        <button class="btn btn-primary btn-small" id="btnNuevaCompra">+ Nueva orden de compra</button>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Fecha</th><th>Insumo</th><th>Cantidad</th><th>Costo</th><th>Comprado en</th><th>Registrado por</th></tr>
+          </thead>
+          <tbody id="purchaseOrdersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ================= PEDIDOS ================= -->
+    <div class="panel-section" id="panel-pedidos">
+      <div class="panel-section-head">
+        <div>
+          <h2>Gestión de pedidos</h2>
+          <p>Consulta los pedidos recibidos y actualiza su estado a medida que avanzan.</p>
+          <p class="hint" id="pedidosScopeNote" style="margin-top:4px;"></p>
+        </div>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Código</th><th>Cliente</th><th>Tipo</th><th>Total</th><th>Estado</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="employeeOrdersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ================= PERSONAL (solo administrador) ================= -->
+    <div class="panel-section" id="panel-personal">
+      <div class="panel-section-head">
+        <div>
+          <h2>Cuentas del personal</h2>
+          <p>Cada persona se registra sola desde "Acceso personal" y queda como <strong>Pendiente de asignación</strong>. Aquí le das su rol definitivo o deshabilitas una cuenta.</p>
+        </div>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Empleado</th><th>Rol</th><th>Estado</th><th>Registrado</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="personalTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MODAL: producto -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal">
+    <button class="modal-close" id="productModalClose">✕</button>
+    <h3 id="productModalTitle">Nuevo producto</h3>
+    <p class="modal-sub">Estos datos se reflejan directamente en el catálogo del cliente.</p>
+    <form id="productForm">
+      <div class="field">
+        <label for="productName">Nombre</label>
+        <input type="text" id="productName" required>
+      </div>
+      <div class="field">
+        <label for="productCat">Categoría</label>
+        <select id="productCat">
+          <option value="cupcake">Cupcake</option>
+          <option value="brownie">Brownie</option>
+          <option value="alfajor">Alfajor</option>
+          <option value="galleta">Galletas</option>
+          <option value="torta">Torta personalizada</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="productDesc">Descripción</label>
+        <textarea id="productDesc"></textarea>
+      </div>
+      <div class="field">
+        <label for="productPrice">Precio base (S/)</label>
+        <input type="number" id="productPrice" min="0" step="0.10" required>
+      </div>
+      <div class="field">
+        <label for="productIcon">Ícono (emoji)</label>
+        <input type="text" id="productIcon" maxlength="2" placeholder="🍰">
+      </div>
+      <div class="field" style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" id="productCustomizable" style="width:auto;">
+        <label for="productCustomizable" style="margin:0;">Es personalizable (como las tortas por encargo)</label>
+      </div>
+      <p class="hint" id="customPriceHint" style="display:none;">El cliente podrá elegir tamaño, sabor, relleno y decoración desde el catálogo; el precio final se calcula sobre este precio base.</p>
+      <div class="field" style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" id="productDisponible" checked style="width:auto;">
+        <label for="productDisponible" style="margin:0;">Visible en el catálogo del cliente</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Guardar producto</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: insumo -->
+<div class="modal-overlay" id="supplyModal">
+  <div class="modal">
+    <button class="modal-close" id="supplyModalClose">✕</button>
+    <h3 id="supplyModalTitle">Nuevo insumo</h3>
+    <p class="modal-sub">Registra el stock disponible de materia prima para producción.</p>
+    <form id="supplyForm">
+      <div class="field">
+        <label for="supplyName">Insumo</label>
+        <input type="text" id="supplyName" required placeholder="Ej. Harina, huevos, chocolate...">
+      </div>
+      <div class="field">
+        <label for="supplyQty">Cantidad disponible</label>
+        <input type="number" id="supplyQty" min="0" step="0.1" required>
+      </div>
+      <div class="field">
+        <label for="supplyUnit">Unidad</label>
+        <select id="supplyUnit">
+          <option value="kg">kg</option>
+          <option value="g">g</option>
+          <option value="l">l</option>
+          <option value="ml">ml</option>
+          <option value="unidades">unidades</option>
+          <option value="docena">docena</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="supplyMin">Stock mínimo (alerta)</label>
+        <input type="number" id="supplyMin" min="0" step="0.1">
+      </div>
+      <div class="field">
+        <label for="supplyProveedor">Proveedor (opcional)</label>
+        <input type="text" id="supplyProveedor">
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Guardar insumo</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: orden de compra -->
+<div class="modal-overlay" id="purchaseModal">
+  <div class="modal">
+    <button class="modal-close" id="purchaseModalClose">✕</button>
+    <h3>Nueva orden de compra</h3>
+    <p class="modal-sub">Registra una compra de insumos hecha en la tienda. El stock del insumo se actualiza solo.</p>
+    <form id="purchaseForm">
+      <div class="field">
+        <label for="purchaseInsumo">Insumo</label>
+        <select id="purchaseInsumo" onchange="document.getElementById('purchaseNuevoNombreWrap').style.display = this.value==='__otro' ? 'block' : 'none';"></select>
+      </div>
+      <div class="field" id="purchaseNuevoNombreWrap" style="display:none;">
+        <label for="purchaseNuevoNombre">Nombre del insumo nuevo</label>
+        <input type="text" id="purchaseNuevoNombre" placeholder="Ej. Harina">
+      </div>
+      <div class="field">
+        <label for="purchaseCantidad">Cantidad comprada</label>
+        <input type="number" id="purchaseCantidad" min="0" step="0.1" required>
+      </div>
+      <div class="field">
+        <label for="purchaseCosto">Costo total (S/)</label>
+        <input type="number" id="purchaseCosto" min="0" step="0.10">
+      </div>
+      <div class="field">
+        <label for="purchaseTienda">Comprado en (opcional)</label>
+        <input type="text" id="purchaseTienda" placeholder="Ej. Mercado central, Makro...">
+      </div>
+      <div class="field">
+        <label for="purchaseFecha">Fecha de compra</label>
+        <input type="date" id="purchaseFecha" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Registrar compra</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hacer pedido · Punto Dulce</title>
+<meta name="description" content="Arma tu pedido de delivery o por encargo en Punto Dulce.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="nav">
+    <a href="index.html" class="logo">🍰 Punto<span>Dulce</span></a>
+    <ul id="navLinks">
+      <li><a href="index.html">Inicio</a></li>
+      <li><a href="catalogo.html">Catálogo</a></li>
+      <li><a href="como-pedir.html">Cómo pedir</a></li>
+      <li><a href="pedido.html" class="active">Hacer pedido</a></li>
+      <li><a href="seguimiento.html">Mis pedidos</a></li>
+      <li><a href="nosotros.html">Nosotros</a></li>
+      <li><a href="contacto.html">Contacto</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a class="staff-link" href="empleado-login.html">Acceso personal</a>
+      <a class="cart-btn" href="pedido.html">
+        🛒 Pedido <span class="cart-count" id="cartCount">0</span>
+      </a>
+      <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú">☰</button>
+    </div>
+  </div>
+</header>
+<section class="page-hero">
+  <div class="wrap">
+    <div class="breadcrumb"><a href="index.html">Inicio</a> <span>/</span> <span>Hacer pedido</span></div>
+    <h1>Arma tu pedido</h1>
+    <p>Revisa lo que agregaste en el catálogo, elige el tipo de pedido y completa tus datos para confirmarlo.</p>
+  </div>
+</section>
+<section>
+  <div class="wrap">
+    <div class="order-layout">
+      <div class="cart-panel">
+        <h3 style="font-size:1.15rem;margin-bottom:14px;">Resumen</h3>
+        <div id="cartItems"></div>
+        <div class="cart-total">
+          <span>Total</span>
+          <span id="cartTotal">S/ 0.00</span>
+        </div>
+      </div>
+
+      <div class="checkout-panel">
+        <h3 style="font-size:1.15rem;margin-bottom:16px;">Datos del pedido</h3>
+        <div class="type-toggle">
+          <button type="button" id="btnDelivery" class="active" onclick="setOrderType('delivery')">Delivery</button>
+          <button type="button" id="btnEncargo" onclick="setOrderType('encargo')">Por encargo</button>
+        </div>
+
+        <div class="field">
+          <label for="clienteNombre">Nombre completo</label>
+          <input type="text" id="clienteNombre" placeholder="Ej. María Torres">
+        </div>
+        <div class="field">
+          <label for="clienteTelefono">Teléfono de contacto</label>
+          <input type="tel" id="clienteTelefono" placeholder="Ej. 987 654 321">
+        </div>
+
+        <div id="deliveryFields" class="conditional show">
+          <div class="field">
+            <label for="direccion">Dirección de entrega</label>
+            <input type="text" id="direccion" placeholder="Av. Ejemplo 123, distrito">
+          </div>
+          <div class="field">
+            <label for="metodoPago">Método de pago</label>
+            <select id="metodoPago">
+              <option value="efectivo">Efectivo contra entrega</option>
+              <option value="tarjeta">Tarjeta (POS en la entrega)</option>
+              <option value="yape">Yape / Plin</option>
+              <option value="transferencia">Transferencia bancaria</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="encargoFields" class="conditional">
+          <div class="field">
+            <label for="fechaEntrega">Fecha de entrega deseada</label>
+            <input type="date" id="fechaEntrega">
+          </div>
+          <div class="field">
+            <label for="anticipo">Anticipo a registrar (S/)</label>
+            <input type="number" id="anticipo" min="0" step="1" placeholder="Ej. 30">
+          </div>
+          <p class="hint">El anticipo confirma la producción de tu pedido personalizado.</p>
+        </div>
+
+        <div class="field">
+          <label for="notas">Notas adicionales (opcional)</label>
+          <textarea id="notas" placeholder="Mensaje en la torta, referencia de dirección, alergias, etc."></textarea>
+        </div>
+
+        <button class="btn btn-yellow btn-full" onclick="submitOrder()">Confirmar pedido</button>
+      </div>
+    </div>
+  </div>
+</section>
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <h4>🍰 Punto Dulce</h4>
+        <p>Repostería mixta con local físico, delivery y pedidos por encargo. Catálogo, personalización y seguimiento, todo en un solo lugar.</p>
+      </div>
+      <div>
+        <h4>Explorar</h4>
+        <ul>
+          <li><a href="catalogo.html">Catálogo</a></li>
+          <li><a href="como-pedir.html">Cómo pedir</a></li>
+          <li><a href="pedido.html">Hacer pedido</a></li>
+          <li><a href="seguimiento.html">Mis pedidos</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contacto</h4>
+        <ul>
+          <li>WhatsApp: 987 654 321</li>
+          <li>correo@puntodulce.pe</li>
+          <li>Lima, Perú</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Horario</h4>
+        <ul>
+          <li>Lun – Sáb: 9:00 am – 8:00 pm</li>
+          <li>Domingo: 10:00 am – 4:00 pm</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 Punto Dulce — Proyecto de desarrollo web integrado.</div>
+  </div>
+</footer>
+<div class="toast" id="toast"></div>
+<script src="script.js"></script>
+</body>
+</html>
