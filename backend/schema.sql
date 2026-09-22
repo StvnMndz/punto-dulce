@@ -61,3 +61,18 @@ CREATE TABLE IF NOT EXISTS insumos (
   actualizado_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                   ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
+
+-- Tabla de productos 
+USE punto_dulce;
+
+CREATE TABLE IF NOT EXISTS productos (
+    id VARCHAR(100) PRIMARY KEY,
+    cat VARCHAR(50) NOT NULL,
+    nombre VARCHAR(150) NOT NULL,
+    descripcion TEXT,
+    precio DECIMAL(10,2) NOT NULL,
+    icono VARCHAR(20),
+    personalizable TINYINT(1) NOT NULL DEFAULT 0,
+    disponible TINYINT(1) NOT NULL DEFAULT 1,
+    media VARCHAR(100)
+);
