@@ -49,6 +49,7 @@ ON DUPLICATE KEY UPDATE usuario = usuario;
 -- =========================================================
 -- Tabla de insumos / materia prima
 -- =========================================================
+USE punto_dulce;
 
 CREATE TABLE IF NOT EXISTS insumos (
   id              INT AUTO_INCREMENT PRIMARY KEY,
