@@ -1096,10 +1096,26 @@ async function renderSupplies(){
 /* ---- Registro de órdenes de compra de insumos ---- */
 async function getPurchaseOrders(){
   try {
-    return await apiRequest('/compras');
+    const data = await apiRequest('/compras');
+
+    return data.map(c => ({
+      id: c.id,
+      insumoId: c.insumo_id,
+      insumo: c.insumo_nombre,
+      cantidad: Number(c.cantidad),
+      unidad: c.unidad,
+      costo: Number(c.costo),
+      tienda: c.tienda || '',
+      fecha: c.fecha,
+      fechaISO: c.fecha_iso || c.fecha,
+      registradoPor: c.registrado_por || '-'
+    }));
+
   } catch(error) {
     console.error('Error al obtener órdenes de compra:', error);
-    showToast(error.message || 'No se pudieron cargar las órdenes de compra');
+    showToast(
+      error.message || 'No se pudieron cargar las órdenes de compra'
+    );
     return [];
   }
 }
@@ -1234,7 +1250,7 @@ const allCompras = await getPurchaseOrders();
   }
   tbody.innerHTML = compras.map(c=>`
     <tr>
-      <td>${c.fecha}</td>
+<td>${new Date(c.fecha).toLocaleDateString('es-PE', { timeZone: 'UTC' })}</td>
       <td>${c.insumo}</td>
       <td>${c.cantidad} ${c.unidad}</td>
       <td>S/ ${Number(c.costo).toFixed(2)}</td>
