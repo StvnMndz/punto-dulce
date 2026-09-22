@@ -103,7 +103,7 @@ function setProducts(products){ localStorage.setItem('pd_products', JSON.stringi
    /backend. Aquí solo guardamos el token de sesión (JWT) y una copia
    ligera de los datos del empleado para pintar la pantalla rápido.
    Cambia API_BASE si tu backend corre en otra URL/puerto. */
-const API_BASE = 'http://localhost:4000/api';
+const API_BASE = 'https://punto-dulce-backend.onrender.com/api';
 
 function getToken(){ return localStorage.getItem('pd_token'); }
 function setToken(token){ localStorage.setItem('pd_token', token); }
