@@ -4,6 +4,7 @@ const cors = require('cors');
 
 const authRoutes = require('./routes/auth');
 const empleadosRoutes = require('./routes/empleados');
+const insumosRoutes = require('./routes/insumos');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/empleados', empleadosRoutes);
+app.use('/api/insumos', insumosRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
