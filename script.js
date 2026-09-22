@@ -803,20 +803,6 @@ async function renderAdminProducts(){
     </tr>
   `).join('');
 }
-  tbody.innerHTML = products.map(p=>`
-    <tr>
-      <td>${p.icon || '🍰'} ${p.name}</td>
-      <td>${labelForCat(p.cat)}</td>
-      <td>${p.customizable ? 'Desde ' : ''}S/ ${Number(p.price).toFixed(2)}</td>
-      <td><span class="pill ${p.disponible!==false ? 'pill-ok':'pill-off'}">${p.disponible!==false ? 'Disponible':'Oculto'}</span></td>
-      <td>${p.customizable ? 'Sí' : 'No'}</td>
-      <td class="table-actions">
-        <button class="btn btn-outline btn-small" onclick="openProductModal('${p.id}')">Editar</button>
-        <button class="btn btn-small btn-danger" onclick="deleteProduct('${p.id}')">Eliminar</button>
-      </td>
-    </tr>
-  `).join('');
-}
 
 async function openProductModal(id){
   editingProductId = id || null;
