@@ -156,3 +156,16 @@ SELECT *FROM ordenes_compra
 ORDER BY fecha DESC;
 
 SELECT *FROM insumos;
+
+CREATE USER 'iJVPrLH5ZtVbQ3Z.equipo'
+IDENTIFIED BY 'PuntoDulce2026';
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON punto_dulce.*
+TO 'iJVPrLH5ZtVbQ3Z.equipo';
+
+GRANT CREATE, ALTER, DROP
+ON punto_dulce.*
+TO 'iJVPrLH5ZtVbQ3Z.equipo';
+
+SELECT USER();
