@@ -1212,36 +1212,7 @@ async function submitPurchaseForm(e){
     );
   }
 }
-    supplies.push(nuevoInsumo);
-    insumoNombre = nuevoNombre;
-  } else {
-    const idx = supplies.findIndex(s=>s.id===insumoSel);
-    if(idx===-1){ showToast('Selecciona un insumo válido'); return; }
-    supplies[idx].cantidad = Number(supplies[idx].cantidad) + cantidad;
-    supplies[idx].actualizadoAt = new Date().toLocaleString('es-PE');
-    insumoNombre = supplies[idx].nombre;
-    unidad = supplies[idx].unidad;
-  }
-  setSupplies(supplies);
-
-  const fechaISO = fecha ? new Date(fecha+'T12:00:00').toISOString() : new Date().toISOString();
-  const compras = getPurchaseOrders();
-  compras.unshift({
-    id: 'OC-'+Date.now(),
-    insumo: insumoNombre,
-    cantidad, unidad, costo, tienda,
-    fecha: fecha || new Date().toISOString().slice(0,10),
-    fechaISO,
-    registradoPor: (getSession() && getSession().nombre) || '—'
-  });
-  setPurchaseOrders(compras);
-
-  closePurchaseModal();
-  renderSupplies();
-  renderPurchaseOrders();
-  showToast('Orden de compra registrada y stock actualizado');
-}
-
+ 
 async function renderPurchaseOrders(){
   const tbody = document.getElementById('purchaseOrdersBody');
   if(!tbody) return;
