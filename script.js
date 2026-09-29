@@ -1273,17 +1273,67 @@ function closePurchaseModal(){ document.getElementById('purchaseModal').classLis
 async function submitPurchaseForm(e){
   e.preventDefault();
 
-  const insumoSel = document.getElementById('purchaseInsumo').value;
-  const nuevoNombre = document.getElementById('purchaseNuevoNombre').value.trim();
-  const cantidad = Number(document.getElementById('purchaseCantidad').value);
-  const costo = Number(document.getElementById('purchaseCosto').value) || 0;
   const tienda = document.getElementById('purchaseTienda').value.trim();
   const fecha = document.getElementById('purchaseFecha').value;
 
-  if(!cantidad || cantidad <= 0){
-    showToast('Indica una cantidad comprada válida');
+  if(!purchaseItems || purchaseItems.length === 0){
+    showToast('Agrega al menos un artículo a la orden');
     return;
   }
+
+  const fechaISO = fecha
+    ? new Date(fecha + 'T12:00:00').toISOString()
+    : new Date().toISOString();
+
+  const session = getSession();
+
+  try {
+
+    await apiRequest('/compras', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: 'OC-' + Date.now(),
+
+        items: purchaseItems.map(item => ({
+          insumoId: item.insumoId,
+          insumoNombre: item.insumoNombre,
+          cantidad: Number(item.cantidad),
+          unidad: item.unidad || 'unidades',
+          costo: Number(item.costo) || 0
+        })),
+
+        tienda,
+
+        fecha: fecha || new Date().toISOString().slice(0,10),
+
+        fechaISO,
+
+        registradoPor: (session && session.nombre) || '-'
+      })
+    });
+
+    await loadSupplies();
+
+    purchaseItems = [];
+
+    closePurchaseModal();
+
+    await renderPurchaseOrders();
+
+    renderSupplies();
+
+    showToast('Orden de compra registrada con todos sus artículos');
+
+  } catch(error) {
+
+    console.error('Error al registrar orden de compra:', error);
+
+    showToast(
+      error.message || 'No se pudo registrar la orden de compra'
+    );
+
+  }
+}
 
   if(insumoSel === '__otro' && !nuevoNombre){
     showToast('Indica el nombre del insumo nuevo');
