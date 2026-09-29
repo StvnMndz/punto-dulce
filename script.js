@@ -1129,6 +1129,74 @@ function populatePurchaseInsumoSelect(){
   select.innerHTML = supplies.map(s=>`<option value="${s.id}">${s.nombre}</option>`).join('')
     + '<option value="__otro">Otro insumo (nuevo)</option>';
 }
+function addPurchaseItem(){
+  const insumoSel = document.getElementById('purchaseInsumo').value;
+  const nuevoNombre = document.getElementById('purchaseNuevoNombre').value.trim();
+  const cantidad = Number(document.getElementById('purchaseCantidad').value);
+  const costo = Number(document.getElementById('purchaseCosto').value) || 0;
+
+  if(!cantidad || cantidad <= 0){
+    showToast('Indica una cantidad válida');
+    return;
+  }
+
+  let insumoId = null;
+  let insumoNombre = '';
+  let unidad = 'unidades';
+
+  if(insumoSel === '__otro'){
+
+    if(!nuevoNombre){
+      showToast('Indica el nombre del insumo nuevo');
+      return;
+    }
+
+    insumoNombre = nuevoNombre;
+
+  }else{
+
+    insumoId = Number(insumoSel);
+
+    const supplies = getSupplies();
+
+    const supply = supplies.find(
+      s => String(s.id) === String(insumoSel)
+    );
+
+    if(!supply){
+      showToast('No se encontró el insumo seleccionado');
+      return;
+    }
+
+    insumoNombre = supply.nombre;
+    unidad = supply.unidad || 'unidades';
+  }
+
+  const yaExiste = purchaseItems.some(
+    item => item.insumoId === insumoId &&
+            item.insumoNombre.toLowerCase() === insumoNombre.toLowerCase()
+  );
+
+  if(yaExiste){
+    showToast('Ese artículo ya fue agregado');
+    return;
+  }
+
+  purchaseItems.push({
+    insumoId,
+    insumoNombre,
+    cantidad,
+    unidad,
+    costo
+  });
+
+  renderPurchaseItems();
+
+  document.getElementById('purchaseCantidad').value = '';
+  document.getElementById('purchaseCosto').value = '';
+
+  showToast(`${insumoNombre} agregado a la orden`);
+}
 
 function openPurchaseModal(){
   purchaseItems = [];
