@@ -539,7 +539,7 @@ async function submitOrder(){
     tipo: orderType,
     nombre,
     telefono,
-    notas: '',
+    notas: document.getElementById('notas').value.trim(),
     items: cart,
     total,
     detalle: JSON.stringify(detail),
@@ -583,26 +583,6 @@ async function submitOrder(){
     console.error('Error al registrar venta:', error);
     showToast('No se pudo registrar el pedido');
   }
-}
-  const order = {
-    id: 'PD-' + Math.floor(1000 + Math.random()*9000),
-    tipo: orderType,
-    nombre, telefono,
-    notas: document.getElementById('notas').value.trim(),
-    items: [...cart],
-    total: cart.reduce((s,i)=>s + (i.price * (i.qty || 1)),0),
-    detail,
-    statusIndex: 0,
-    createdAt: new Date().toLocaleString('es-PE'),
-    createdAtISO: new Date().toISOString()
-  };
-  const orders = getOrders();
-  orders.unshift(order);
-  setOrders(orders);
-  setCart([]);
-
-  showToast(`Pedido ${order.id} confirmado`);
-  setTimeout(()=>{ window.location.href = 'seguimiento.html'; }, 900);
 }
 
 /* =========================================================
