@@ -545,6 +545,7 @@ function initEmployeeAuth(){
 ========================================================= */
 let editingProductId = null;
 let editingSupplyId = null;
+let purchaseItems = [];
 
 function requireEmployeeSession(){
   const panel = document.getElementById('employeePanel');
@@ -641,6 +642,7 @@ async function initEmployeePanel(){
   document.getElementById('btnNuevaCompra').addEventListener('click', ()=> openPurchaseModal());
   document.getElementById('purchaseForm').addEventListener('submit', submitPurchaseForm);
   document.getElementById('purchaseModalClose').addEventListener('click', closePurchaseModal);
+   document.getElementById('btnAgregarArticulo').addEventListener('click', addPurchaseItem);
 
   if(!tienePermisos) return;
 }
@@ -1129,12 +1131,75 @@ function populatePurchaseInsumoSelect(){
 }
 
 function openPurchaseModal(){
+  purchaseItems = [];
+
   populatePurchaseInsumoSelect();
+
   document.getElementById('purchaseForm').reset();
+
   document.getElementById('purchaseNuevoNombreWrap').style.display = 'none';
-  document.getElementById('purchaseFecha').value = new Date().toISOString().slice(0,10);
+
+  document.getElementById('purchaseFecha').value =
+    new Date().toISOString().slice(0,10);
+
+  renderPurchaseItems();
+
   document.getElementById('purchaseModal').classList.add('open');
 }
+function renderPurchaseItems(){
+  const container = document.getElementById('purchaseItemsContainer');
+
+  if(!container) return;
+
+  if(purchaseItems.length === 0){
+    container.innerHTML = `
+      <p class="hint">
+        No hay artículos agregados todavía.
+      </p>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="margin-bottom:10px;">
+      <strong>Artículos de la orden</strong>
+    </div>
+
+    ${purchaseItems.map((item, index) => `
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:10px;
+        padding:10px;
+        margin-bottom:8px;
+        border:1px solid #ddd;
+        border-radius:10px;
+      ">
+        <div>
+          <strong>${item.insumoNombre}</strong>
+          <div class="hint">
+            ${item.cantidad} ${item.unidad} · S/ ${item.costo.toFixed(2)}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-small btn-danger"
+          onclick="removePurchaseItem(${index})">
+          Quitar
+        </button>
+      </div>
+    `).join('')}
+  `;
+}
+
+
+function removePurchaseItem(index){
+  purchaseItems.splice(index, 1);
+  renderPurchaseItems();
+}
+
 function closePurchaseModal(){ document.getElementById('purchaseModal').classList.remove('open'); }
 
 async function submitPurchaseForm(e){
