@@ -57,12 +57,12 @@ router.post('/', async (req, res) => {
         (venta_id, producto_id, producto_nombre, cantidad, precio, subtotal)
         VALUES (?, ?, ?, ?, ?, ?)`,
         [
-          ventaId,
-          item.id && !isNaN(Number(item.id)) ? Number(item.id) : null,
-          item.name,
-          cantidad,
-          precio,
-          subtotal
+      ventaId,
+  null,
+  item.name,
+  cantidad,
+  precio,
+  subtotal
         ]
       );
     }
