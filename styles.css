@@ -421,3 +421,41 @@ tr.row-warning td{background:rgba(238,180,201,.25);}
   .quick-cats{grid-template-columns:repeat(2,1fr);}
   .catalog-cta{flex-direction:column;align-items:flex-start;}
 }
+
+/* Selector de cantidad del catálogo */
+.quantity-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.qty-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #ddd;
+  border-radius: 50%;
+  background: #fff;
+  color: #7b1e3a;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.qty-btn:hover {
+  background: #7b1e3a;
+  color: white;
+}
+
+.qty-value {
+  min-width: 28px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.add-product-btn {
+  margin-top: 10px;
+}
