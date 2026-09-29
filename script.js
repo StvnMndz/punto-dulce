@@ -406,27 +406,74 @@ function removeFromCart(id){
 function renderCartPanel(){
   const wrap = document.getElementById('cartItems');
   if(!wrap) return;
+
   const cart = getCart();
   const totalEl = document.getElementById('cartTotal');
 
-  if(cart.length===0){
+  if(cart.length === 0){
     wrap.innerHTML = '<p class="cart-empty">Aún no agregaste productos. <a href="catalogo.html">Ve al catálogo</a> y elige algo rico 🍮</p>';
-  } else {
-    wrap.innerHTML = cart.map(item=>`
-      <div class="cart-item">
-        <div>
-          <div class="ci-name">${item.name}</div>
-          ${item.meta ? `<div class="ci-meta">${item.meta}</div>` : ''}
+  }else{
+    wrap.innerHTML = cart.map(item=>{
+      const cantidad = item.qty || 1;
+      const subtotal = item.price * cantidad;
+
+      return `
+        <div class="cart-item">
+          <div>
+            <div class="ci-name">${item.name}</div>
+            ${item.meta ? `<div class="ci-meta">${item.meta}</div>` : ''}
+            <div class="ci-meta">S/ ${item.price.toFixed(2)} c/u</div>
+          </div>
+
+          <div style="text-align:right;">
+            <div class="quantity-control">
+              <button type="button" class="qty-btn"
+                onclick="changeCartQty('${item.id}', -1)">−</button>
+
+              <span class="qty-value">${cantidad}</span>
+
+              <button type="button" class="qty-btn"
+                onclick="changeCartQty('${item.id}', 1)">+</button>
+            </div>
+
+            <div class="price" style="font-size:.95rem; margin-top:6px;">
+              S/ ${subtotal.toFixed(2)}
+            </div>
+
+            <button class="ci-remove"
+              onclick="removeFromCart('${item.id}')">
+              Quitar
+            </button>
+          </div>
         </div>
-        <div style="text-align:right;">
-          <div class="price" style="font-size:.95rem;">S/ ${item.price.toFixed(2)}</div>
-          <button class="ci-remove" onclick="removeFromCart('${item.id}')">Quitar</button>
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
-  const total = cart.reduce((s,i)=>s+i.price,0);
-  if(totalEl) totalEl.textContent = `S/ ${total.toFixed(2)}`;
+
+  const total = cart.reduce(
+    (s,i) => s + (i.price * (i.qty || 1)),
+    0
+  );
+
+  if(totalEl){
+    totalEl.textContent = `S/ ${total.toFixed(2)}`;
+  }
+}
+function changeCartQty(id, cambio){
+  const cart = getCart();
+  const item = cart.find(i => i.id === id);
+
+  if(!item) return;
+
+  item.qty = (item.qty || 1) + cambio;
+
+  if(item.qty <= 0){
+    removeFromCart(id);
+    return;
+  }
+
+  setCart(cart);
+  renderCartPanel();
 }
 
 function submitOrder(){
@@ -455,7 +502,7 @@ function submitOrder(){
     nombre, telefono,
     notas: document.getElementById('notas').value.trim(),
     items: [...cart],
-    total: cart.reduce((s,i)=>s+i.price,0),
+    total: cart.reduce((s,i)=>s + (i.price * (i.qty || 1)),0),
     detail,
     statusIndex: 0,
     createdAt: new Date().toLocaleString('es-PE'),
