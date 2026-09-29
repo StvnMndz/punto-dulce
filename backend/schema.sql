@@ -182,3 +182,29 @@ CREATE TABLE IF NOT EXISTS detalle_orden_compra (
     FOREIGN KEY (orden_id) REFERENCES ordenes_compra(id),
     FOREIGN KEY (insumo_id) REFERENCES insumos(id)
 );
+
+CREATE TABLE IF NOT EXISTS ventas (
+    id VARCHAR(100) PRIMARY KEY,
+    tipo VARCHAR(30) NOT NULL,
+    nombre VARCHAR(150) NOT NULL,
+    telefono VARCHAR(30) NOT NULL,
+    notas TEXT,
+    total DECIMAL(10,2) NOT NULL DEFAULT 0,
+    estado VARCHAR(30) NOT NULL DEFAULT 'Pendiente',
+    detalle TEXT,
+    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_iso VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS detalle_ventas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    venta_id VARCHAR(100) NOT NULL,
+    producto_id INT NULL,
+    producto_nombre VARCHAR(150) NOT NULL,
+    cantidad DECIMAL(10,2) NOT NULL,
+    precio DECIMAL(10,2) NOT NULL,
+    subtotal DECIMAL(10,2) NOT NULL,
+
+    FOREIGN KEY (venta_id)
+        REFERENCES ventas(id)
+);
