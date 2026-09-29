@@ -169,3 +169,16 @@ ON punto_dulce.*
 TO 'iJVPrLH5ZtVbQ3Z.equipo';
 
 SELECT USER();
+
+CREATE TABLE IF NOT EXISTS detalle_orden_compra (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    orden_id VARCHAR(100) NOT NULL,
+    insumo_id INT NULL,
+    insumo_nombre VARCHAR(150) NOT NULL,
+    cantidad DECIMAL(10,2) NOT NULL,
+    unidad VARCHAR(50) NOT NULL,
+    costo DECIMAL(10,2) NOT NULL DEFAULT 0,
+
+    FOREIGN KEY (orden_id) REFERENCES ordenes_compra(id),
+    FOREIGN KEY (insumo_id) REFERENCES insumos(id)
+);
