@@ -269,10 +269,31 @@ function initCatalogFilters(){
 }
 
 function addSimpleToCart(p){
+  const cantidad = Number(prompt(`¿Cuántas unidades de ${p.name} deseas agregar?`, '1'));
+
+  if(!cantidad || cantidad <= 0 || !Number.isInteger(cantidad)){
+    showToast('Ingresa una cantidad válida');
+    return;
+  }
+
   const cart = getCart();
-  cart.push({id:Date.now()+''+Math.random(), name:p.name, meta:'', price:p.price, qty:1});
+
+  const existente = cart.find(item => item.name === p.name && item.price === p.price);
+
+  if(existente){
+    existente.qty += cantidad;
+  }else{
+    cart.push({
+      id: Date.now()+''+Math.random(),
+      name: p.name,
+      meta: '',
+      price: p.price,
+      qty: cantidad
+    });
+  }
+
   setCart(cart);
-  showToast(`${p.name} agregado al pedido`);
+  showToast(`${cantidad} x ${p.name} agregado al pedido`);
 }
 
 /* ---- Modal de personalización ---- */
