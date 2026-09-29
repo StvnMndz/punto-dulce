@@ -255,32 +255,53 @@
     <h3>Nueva orden de compra</h3>
     <p class="modal-sub">Registra una compra de insumos hecha en la tienda. El stock del insumo se actualiza solo.</p>
     <form id="purchaseForm">
-      <div class="field">
-        <label for="purchaseInsumo">Insumo</label>
-        <select id="purchaseInsumo" onchange="document.getElementById('purchaseNuevoNombreWrap').style.display = this.value==='__otro' ? 'block' : 'none';"></select>
-      </div>
-      <div class="field" id="purchaseNuevoNombreWrap" style="display:none;">
-        <label for="purchaseNuevoNombre">Nombre del insumo nuevo</label>
-        <input type="text" id="purchaseNuevoNombre" placeholder="Ej. Harina">
-      </div>
-      <div class="field">
-        <label for="purchaseCantidad">Cantidad comprada</label>
-        <input type="number" id="purchaseCantidad" min="0" step="0.1" required>
-      </div>
-      <div class="field">
-        <label for="purchaseCosto">Costo total (S/)</label>
-        <input type="number" id="purchaseCosto" min="0" step="0.10">
-      </div>
-      <div class="field">
-        <label for="purchaseTienda">Comprado en (opcional)</label>
-        <input type="text" id="purchaseTienda" placeholder="Ej. Mercado central, Makro...">
-      </div>
-      <div class="field">
-        <label for="purchaseFecha">Fecha de compra</label>
-        <input type="date" id="purchaseFecha" required>
-      </div>
-      <button type="submit" class="btn btn-primary btn-full">Registrar compra</button>
-    </form>
+  <div class="field">
+    <label for="purchaseInsumo">Insumo</label>
+    <select id="purchaseInsumo"
+      onchange="document.getElementById('purchaseNuevoNombreWrap').style.display = this.value==='__otro' ? 'block' : 'none';">
+    </select>
+  </div>
+
+  <div class="field" id="purchaseNuevoNombreWrap" style="display:none;">
+    <label for="purchaseNuevoNombre">Nombre del insumo nuevo</label>
+    <input type="text" id="purchaseNuevoNombre" placeholder="Ej. Harina">
+  </div>
+
+  <div class="field">
+    <label for="purchaseCantidad">Cantidad comprada</label>
+    <input type="number" id="purchaseCantidad" min="0" step="0.1" required>
+  </div>
+
+  <div class="field">
+    <label for="purchaseCosto">Costo total (S/)</label>
+    <input type="number" id="purchaseCosto" min="0" step="0.10">
+  </div>
+
+  <!-- NUEVO -->
+  <button
+    type="button"
+    class="btn btn-outline btn-full"
+    id="btnAgregarArticulo">
+    + Agregar artículo
+  </button>
+
+  <!-- NUEVO: aquí aparecerán los artículos agregados -->
+  <div id="purchaseItemsContainer" style="margin-top:20px;"></div>
+
+  <div class="field">
+    <label for="purchaseTienda">Comprado en (opcional)</label>
+    <input type="text" id="purchaseTienda" placeholder="Ej. Mercado central, Makro...">
+  </div>
+
+  <div class="field">
+    <label for="purchaseFecha">Fecha de compra</label>
+    <input type="date" id="purchaseFecha" required>
+  </div>
+
+  <button type="submit" class="btn btn-primary btn-full">
+    Registrar compra
+  </button>
+</form>
   </div>
 </div>
 
