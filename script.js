@@ -476,26 +476,114 @@ function changeCartQty(id, cambio){
   renderCartPanel();
 }
 
-function submitOrder(){
+async function submitOrder(){
   const cart = getCart();
-  if(cart.length===0){ showToast('Agrega al menos un producto antes de pedir'); return; }
-  const nombre = document.getElementById('clienteNombre').value.trim();
-  const telefono = document.getElementById('clienteTelefono').value.trim();
-  if(!nombre || !telefono){ showToast('Completa tu nombre y teléfono'); return; }
 
-  let detail = {};
-  if(orderType==='delivery'){
-    const direccion = document.getElementById('direccion').value.trim();
-    if(!direccion){ showToast('Indica tu dirección de entrega'); return; }
-    detail = { direccion, metodoPago: document.getElementById('metodoPago').value };
-  } else {
-    const fecha = document.getElementById('fechaEntrega').value;
-    const anticipo = document.getElementById('anticipo').value;
-    if(!fecha){ showToast('Selecciona la fecha de entrega'); return; }
-    if(!anticipo || Number(anticipo) <= 0){ showToast('Registra el anticipo para confirmar tu pedido'); return; }
-    detail = { fechaEntrega: fecha, anticipo: Number(anticipo) };
+  if(cart.length === 0){
+    showToast('Agrega al menos un producto antes de pedir');
+    return;
   }
 
+  const nombre = document.getElementById('clienteNombre').value.trim();
+  const telefono = document.getElementById('clienteTelefono').value.trim();
+
+  if(!nombre || !telefono){
+    showToast('Completa tu nombre y teléfono');
+    return;
+  }
+
+  let detail = {};
+
+  if(orderType === 'delivery'){
+    const direccion = document.getElementById('direccion').value.trim();
+
+    if(!direccion){
+      showToast('Indica tu dirección de entrega');
+      return;
+    }
+
+    detail = {
+      direccion,
+      metodoPago: document.getElementById('metodoPago').value
+    };
+
+  }else{
+    const fecha = document.getElementById('fechaEntrega').value;
+    const anticipo = document.getElementById('anticipo').value;
+
+    if(!fecha){
+      showToast('Selecciona la fecha de entrega');
+      return;
+    }
+
+    if(!anticipo || Number(anticipo) <= 0){
+      showToast('Registra el anticipo para confirmar tu pedido');
+      return;
+    }
+
+    detail = {
+      fechaEntrega: fecha,
+      anticipo: Number(anticipo)
+    };
+  }
+
+  const total = cart.reduce(
+    (s, item) => s + (item.price * (item.qty || 1)),
+    0
+  );
+
+  const orderId = 'PD-' + Math.floor(1000 + Math.random() * 9000);
+
+  const order = {
+    id: orderId,
+    tipo: orderType,
+    nombre,
+    telefono,
+    notas: '',
+    items: cart,
+    total,
+    detalle: JSON.stringify(detail),
+    fechaISO: new Date().toISOString()
+  };
+
+  try{
+    const response = await fetch(`${API_BASE}/ventas`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(order)
+    });
+
+    const data = await response.json();
+
+    if(!response.ok){
+      throw new Error(data.error || 'No se pudo registrar la venta');
+    }
+
+    const orders = getOrders();
+
+    orders.unshift({
+      ...order,
+      statusIndex: 0,
+      createdAt: new Date().toLocaleString('es-PE'),
+      createdAtISO: new Date().toISOString()
+    });
+
+    setOrders(orders);
+    setCart([]);
+
+    showToast(`Pedido ${orderId} confirmado`);
+
+    setTimeout(()=>{
+      window.location.href = 'seguimiento.html';
+    }, 900);
+
+  }catch(error){
+    console.error('Error al registrar venta:', error);
+    showToast('No se pudo registrar el pedido');
+  }
+}
   const order = {
     id: 'PD-' + Math.floor(1000 + Math.random()*9000),
     tipo: orderType,
