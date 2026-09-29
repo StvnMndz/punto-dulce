@@ -220,25 +220,54 @@ async function renderProducts(filter='todos'){
         <p class="desc">${p.desc}</p>
 
         <div class="product-footer">
-          <span class="price">
-            ${p.customizable ? 'Desde ' : ''}S/ ${p.price.toFixed(2)}
-          </span>
+  <span class="price">
+    ${p.customizable ? 'Desde ' : ''}S/ ${p.price.toFixed(2)}
+  </span>
 
-          <button class="btn ${p.customizable ? 'btn-primary' : 'btn-outline'} btn-small">
-            ${p.customizable ? 'Personalizar' : 'Agregar'}
-          </button>
-        </div>
+  ${p.customizable ? `
+    <button class="btn btn-primary btn-small">
+      Personalizar
+    </button>
+  ` : `
+    <div class="quantity-control">
+      <button type="button" class="qty-btn qty-minus">−</button>
+      <span class="qty-value">1</span>
+      <button type="button" class="qty-btn qty-plus">+</button>
+    </div>
+
+    <button type="button" class="btn btn-outline btn-small add-product-btn">
+      Agregar
+    </button>
+  `}
+</div>
       </div>
     `;
 
-    card.querySelector('button').addEventListener('click', ()=>{
-      if(p.customizable){
-        openCustomize(p);
-      } else {
-        addSimpleToCart(p);
-      }
-    });
+  if(p.customizable){
+  card.querySelector('button').addEventListener('click', ()=>{
+    openCustomize(p);
+  });
+}else{
+  let cantidad = 1;
 
+  const qtyValue = card.querySelector('.qty-value');
+
+  card.querySelector('.qty-minus').addEventListener('click', ()=>{
+    if(cantidad > 1){
+      cantidad--;
+      qtyValue.textContent = cantidad;
+    }
+  });
+
+  card.querySelector('.qty-plus').addEventListener('click', ()=>{
+    cantidad++;
+    qtyValue.textContent = cantidad;
+  });
+
+  card.querySelector('.add-product-btn').addEventListener('click', ()=>{
+    addSimpleToCart(p, cantidad);
+  });
+}
     grid.appendChild(card);
   });
 }
@@ -268,17 +297,12 @@ function initCatalogFilters(){
   renderProducts('todos');
 }
 
-function addSimpleToCart(p){
-  const cantidad = Number(prompt(`¿Cuántas unidades de ${p.name} deseas agregar?`, '1'));
-
-  if(!cantidad || cantidad <= 0 || !Number.isInteger(cantidad)){
-    showToast('Ingresa una cantidad válida');
-    return;
-  }
-
+function addSimpleToCart(p, cantidad = 1){
   const cart = getCart();
 
-  const existente = cart.find(item => item.name === p.name && item.price === p.price);
+  const existente = cart.find(item =>
+    item.name === p.name && item.price === p.price
+  );
 
   if(existente){
     existente.qty += cantidad;
