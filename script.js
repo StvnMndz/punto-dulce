@@ -1142,13 +1142,21 @@ function initPanelTabs(){
 /* ---- Resumen / estadísticas de ventas ---- */
 async function computeStats(soloSemana){
 
-  const [pedidos, ventas] = await Promise.all([
+const [respuestaPedidos, ventas] =
+  await Promise.all([
     apiRequest('/pedidos'),
     apiRequest('/ventas')
   ]);
 
-  let orders = Array.isArray(pedidos) ? pedidos : [];
-  let sales = Array.isArray(ventas) ? ventas : [];
+let orders =
+  Array.isArray(respuestaPedidos)
+    ? respuestaPedidos
+    : (respuestaPedidos.pedidos || []);
+
+let sales =
+  Array.isArray(ventas)
+    ? ventas
+    : [];
 
   if(soloSemana){
 
@@ -2022,11 +2030,13 @@ async function renderEmployeeOrders(){
 
   try{
 
-    let orders =
-      await apiRequest('/pedidos');
+ const respuesta =
+  await apiRequest('/pedidos');
 
-    if(!Array.isArray(orders)){
-      orders = [];
+let orders =
+  Array.isArray(respuesta)
+    ? respuesta
+    : (respuesta.pedidos || []);
     }
 
     if(soloSemana){
