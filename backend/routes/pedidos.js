@@ -121,3 +121,65 @@ router.patch('/:id/estado', requireAuth, requireRole(...ROLES_GESTION), async (r
 });
 
 module.exports = router;
+
+// Actualizar estado de un pedido
+router.put('/:id/estado', async (req, res) => {
+
+  try {
+
+    const { estado } = req.body;
+
+    const estadosPermitidos = [
+      'pendiente',
+      'confirmado',
+      'en_preparacion',
+      'listo',
+      'en_camino',
+      'entregado',
+      'cancelado'
+    ];
+
+    if(!estadosPermitidos.includes(estado)){
+      return res.status(400).json({
+        error: 'Estado no válido'
+      });
+    }
+
+    const [resultado] = await db.query(
+      `UPDATE pedidos
+       SET estado = ?
+       WHERE id = ?`,
+      [
+        estado,
+        req.params.id
+      ]
+    );
+
+    if(resultado.affectedRows === 0){
+      return res.status(404).json({
+        error: 'Pedido no encontrado'
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: 'Estado actualizado correctamente',
+      estado
+    });
+
+  } catch(error) {
+
+    console.error(
+      'Error al actualizar estado:',
+      error
+    );
+
+    res.status(500).json({
+      error: 'No se pudo actualizar el estado del pedido'
+    });
+
+  }
+
+});
+
+module.exports = router;
