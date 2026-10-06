@@ -827,14 +827,63 @@ async function renderOrders(){
   }
 
 }
-function advanceOrder(idx){
-  const orders = getOrders();
-  if(orders[idx].statusIndex < STATUS_STEPS.length-1){
-    orders[idx].statusIndex++;
-    setOrders(orders);
-    renderOrders();
-    showToast(`Pedido ${orders[idx].id}: ${STATUS_STEPS[orders[idx].statusIndex]}`);
+async function advanceOrder(id, estadoActual){
+
+  const estados = [
+    'pendiente',
+    'confirmado',
+    'en_preparacion',
+    'listo',
+    'en_camino',
+    'entregado'
+  ];
+
+  const posicion =
+    estados.indexOf(estadoActual);
+
+  if(
+    posicion === -1 ||
+    posicion >= estados.length - 1
+  ){
+    return;
   }
+
+  const nuevoEstado =
+    estados[posicion + 1];
+
+  try{
+
+    await apiRequest(
+      `/pedidos/${id}/estado`,
+      {
+        method: 'PUT',
+
+        body: JSON.stringify({
+          estado: nuevoEstado
+        })
+      }
+    );
+
+    await renderOrders();
+
+    showToast(
+      `Pedido actualizado: ${nuevoEstado}`
+    );
+
+  }catch(error){
+
+    console.error(
+      'Error al actualizar pedido:',
+      error
+    );
+
+    showToast(
+      error.message ||
+      'No se pudo actualizar el pedido'
+    );
+
+  }
+
 }
 
 /* =========================================================
