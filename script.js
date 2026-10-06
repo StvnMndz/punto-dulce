@@ -527,12 +527,7 @@ async function submitOrder(){
     };
   }
 
-const total = cart.reduce(
-  (s, item) => s + (item.price * (item.qty || 1)),
-  0
-);
 
-const orderId = 'PD-' + Math.floor(1000 + Math.random() * 9000);
 
 const items = cart.map(item => ({
   nombre: item.name,
@@ -552,16 +547,15 @@ try {
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      codigo: orderId,
-      nombre,
-      telefono,
-      tipo: orderType,
-      direccion: detail.direccion || null,
-      fechaEntrega: detail.fechaEntrega || null,
-      notas: notasBase,
-      items
-    })
+body: JSON.stringify({
+  nombre,
+  telefono,
+  tipo: orderType,
+  direccion: detail.direccion || null,
+  fechaEntrega: detail.fechaEntrega || null,
+  notas: notasBase,
+  items
+})
   });
 
   const data = await response.json();
@@ -574,12 +568,12 @@ try {
 
   setCart([]);
 
-  showToast(`Pedido ${data.codigo || orderId} registrado correctamente`);
+showToast(`Pedido ${data.codigo} registrado correctamente`);
 
-  sessionStorage.setItem(
-    'pd_codigo_pedido',
-    data.codigo || orderId
-  );
+sessionStorage.setItem(
+  'pd_codigo_pedido',
+  data.codigo
+);
 
   sessionStorage.setItem(
     'pd_telefono_pedido',
@@ -597,6 +591,7 @@ try {
   showToast(
     error.message || 'No se pudo registrar el pedido'
   );
+}
 }
 /* =========================================================
    PÁGINA: seguimiento.html
