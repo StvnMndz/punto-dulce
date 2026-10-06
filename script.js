@@ -477,6 +477,7 @@ function changeCartQty(id, cambio){
 }
 
 async function submitOrder(){
+
   const cart = getCart();
 
   if(cart.length === 0){
@@ -484,8 +485,11 @@ async function submitOrder(){
     return;
   }
 
-  const nombre = document.getElementById('clienteNombre').value.trim();
-  const telefono = document.getElementById('clienteTelefono').value.trim();
+  const nombre =
+    document.getElementById('clienteNombre').value.trim();
+
+  const telefono =
+    document.getElementById('clienteTelefono').value.trim();
 
   if(!nombre || !telefono){
     showToast('Completa tu nombre y teléfono');
@@ -495,7 +499,9 @@ async function submitOrder(){
   let detail = {};
 
   if(orderType === 'delivery'){
-    const direccion = document.getElementById('direccion').value.trim();
+
+    const direccion =
+      document.getElementById('direccion').value.trim();
 
     if(!direccion){
       showToast('Indica tu dirección de entrega');
@@ -504,12 +510,17 @@ async function submitOrder(){
 
     detail = {
       direccion,
-      metodoPago: document.getElementById('metodoPago').value
+      metodoPago:
+        document.getElementById('metodoPago').value
     };
 
   }else{
-    const fecha = document.getElementById('fechaEntrega').value;
-    const anticipo = document.getElementById('anticipo').value;
+
+    const fecha =
+      document.getElementById('fechaEntrega').value;
+
+    const anticipo =
+      document.getElementById('anticipo').value;
 
     if(!fecha){
       showToast('Selecciona la fecha de entrega');
@@ -527,71 +538,122 @@ async function submitOrder(){
     };
   }
 
+  const items = cart.map(item => ({
+    nombre: item.name,
+    detalle: item.meta || '',
+    precio: Number(item.price),
+    cantidad: Number(item.qty || 1)
+  }));
 
+  const notasBase =
+    document.getElementById('notas')
+      ? document.getElementById('notas').value.trim()
+      : '';
 
-const items = cart.map(item => ({
-  nombre: item.name,
-  detalle: item.meta || '',
-  precio: Number(item.price),
-  cantidad: Number(item.qty || 1)
-}));
+  try{
 
-const notasBase = document.getElementById('notas')
-  ? document.getElementById('notas').value.trim()
-  : '';
+    /* =====================================
+       1. GUARDAR PEDIDO
+       ===================================== */
 
-try {
+    const pedido = await apiRequest('/pedidos', {
+      method: 'POST',
 
-  const response = await fetch(`${API_BASE}/pedidos`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-body: JSON.stringify({
-  nombre,
-  telefono,
-  tipo: orderType,
-  direccion: detail.direccion || null,
-  fechaEntrega: detail.fechaEntrega || null,
-  notas: notasBase,
-  items
-})
-  });
+      body: JSON.stringify({
 
-  const data = await response.json();
+        nombre,
+        telefono,
 
-  if(!response.ok){
-    throw new Error(
-      data.error || 'No se pudo registrar el pedido'
+        tipo: orderType,
+
+        direccion:
+          detail.direccion || null,
+
+        fechaEntrega:
+          detail.fechaEntrega || null,
+
+        notas: notasBase,
+
+        items
+
+      })
+    });
+
+    /* =====================================
+       2. GUARDAR VENTA
+       ===================================== */
+
+    const venta = await apiRequest('/ventas', {
+      method: 'POST',
+
+      body: JSON.stringify({
+
+        pedidoId: pedido.id,
+
+        nombre,
+
+        telefono,
+
+        metodoPago:
+          detail.metodoPago || 'Pendiente',
+
+        items,
+
+        total:
+          Number(pedido.total)
+
+      })
+    });
+
+    /* =====================================
+       3. LIMPIAR CARRITO
+       ===================================== */
+
+    setCart([]);
+
+    /* =====================================
+       4. GUARDAR DATOS PARA SEGUIMIENTO
+       ===================================== */
+
+    sessionStorage.setItem(
+      'pd_codigo_pedido',
+      pedido.codigo
     );
+
+    sessionStorage.setItem(
+      'pd_telefono_pedido',
+      telefono
+    );
+
+    showToast(
+      `Pedido ${pedido.codigo} registrado correctamente`
+    );
+
+    /* =====================================
+       5. IR A SEGUIMIENTO
+       ===================================== */
+
+    setTimeout(() => {
+
+      window.location.href =
+        'seguimiento.html';
+
+    }, 900);
+
+  }catch(error){
+
+    console.error(
+      'Error al registrar pedido/venta:',
+      error
+    );
+
+    showToast(
+      error.message ||
+      'No se pudo registrar el pedido'
+    );
+
   }
 
-  setCart([]);
-
-showToast(`Pedido ${data.codigo} registrado correctamente`);
-
-sessionStorage.setItem(
-  'pd_codigo_pedido',
-  data.codigo
-);
-
-  sessionStorage.setItem(
-    'pd_telefono_pedido',
-    telefono
-  );
-
-  setTimeout(() => {
-    window.location.href = 'seguimiento.html';
-  }, 900);
-
-} catch(error) {
-
-  console.error('Error al registrar pedido:', error);
-
-  showToast(
-    error.message || 'No se pudo registrar el pedido'
-  );
-}
 }
 /* =========================================================
    PÁGINA: seguimiento.html
@@ -1029,61 +1091,272 @@ function initPanelTabs(){
 }
 
 /* ---- Resumen / estadísticas de ventas ---- */
-function computeStats(soloSemana){
-  let orders = getOrders();
-  if(soloSemana) orders = orders.filter(o=>isInCurrentWeek(o.createdAtISO));
+async function computeStats(soloSemana){
+
+  const [pedidos, ventas] = await Promise.all([
+    apiRequest('/pedidos'),
+    apiRequest('/ventas')
+  ]);
+
+  let orders = Array.isArray(pedidos) ? pedidos : [];
+  let sales = Array.isArray(ventas) ? ventas : [];
+
+  if(soloSemana){
+
+    orders = orders.filter(o =>
+      isInCurrentWeek(
+        o.created_at || o.createdAtISO || o.createdAt
+      )
+    );
+
+    sales = sales.filter(v =>
+      isInCurrentWeek(v.fecha || v.created_at)
+    );
+  }
+
   const totalPedidos = orders.length;
-  const ventasTotales = orders.reduce((s,o)=>s+o.total,0);
-  const pendientes = orders.filter(o=>o.statusIndex < STATUS_STEPS.length-1).length;
-  const entregados = orders.filter(o=>o.statusIndex === STATUS_STEPS.length-1).length;
-  const porTipo = {delivery:0, encargo:0};
-  const productCount = {};
-  orders.forEach(o=>{
-    porTipo[o.tipo] = (porTipo[o.tipo]||0) + o.total;
-    (o.items||[]).forEach(it=>{ productCount[it.name] = (productCount[it.name]||0) + 1; });
+
+  const ventasTotales = sales.reduce(
+    (s, v) => s + Number(v.total || 0),
+    0
+  );
+
+  const pendientes = orders.filter(o =>
+    o.estado !== 'entregado' &&
+    o.estado !== 'cancelado'
+  ).length;
+
+  const entregados = orders.filter(o =>
+    o.estado === 'entregado'
+  ).length;
+
+  const porTipo = {
+    delivery: 0,
+    encargo: 0
+  };
+
+  orders.forEach(o => {
+
+    const tipo =
+      o.tipo === 'encargo'
+        ? 'encargo'
+        : 'delivery';
+
+    porTipo[tipo] += Number(o.total || 0);
+
   });
-  const topProducts = Object.entries(productCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  return {totalPedidos, ventasTotales, pendientes, entregados, porTipo, topProducts};
+
+  const productCount = {};
+
+  sales.forEach(v => {
+
+    let items = v.items;
+
+    if(typeof items === 'string'){
+      try {
+        items = JSON.parse(items);
+      } catch {
+        items = [];
+      }
+    }
+
+    if(!Array.isArray(items)) return;
+
+    items.forEach(item => {
+
+      const nombre =
+        item.nombre ||
+        item.name ||
+        'Producto';
+
+      const cantidad =
+        Number(
+          item.cantidad ||
+          item.qty ||
+          1
+        );
+
+      productCount[nombre] =
+        (productCount[nombre] || 0) + cantidad;
+
+    });
+  });
+
+  const topProducts =
+    Object.entries(productCount)
+      .sort((a,b) => b[1] - a[1])
+      .slice(0,5);
+
+  return {
+    totalPedidos,
+    ventasTotales,
+    pendientes,
+    entregados,
+    porTipo,
+    topProducts
+  };
 }
 
-function renderStats(){
-  const wrap = document.getElementById('statsCards');
-  if(!wrap) return;
-  const soloSemana = soloSemanaParaRolActual();
-  const s = computeStats(soloSemana);
 
-  const scopeNote = document.getElementById('statsScopeNote');
+async function renderStats(){
+
+  const wrap =
+    document.getElementById('statsCards');
+
+  if(!wrap) return;
+
+  const soloSemana =
+    soloSemanaParaRolActual();
+
+  const s =
+    await computeStats(soloSemana);
+
+  const scopeNote =
+    document.getElementById('statsScopeNote');
+
   if(scopeNote){
-    scopeNote.textContent = soloSemana
-      ? `Mostrando la semana en curso (${formatWeekRange()}). El administrador ve el historial completo.`
-      : 'Historial completo (vista de administrador).';
+
+    scopeNote.textContent =
+      soloSemana
+        ? `Mostrando la semana en curso (${formatWeekRange()}). El administrador ve el historial completo.`
+        : 'Historial completo (vista de administrador).';
+
   }
 
   wrap.innerHTML = `
-    <div class="stat-card"><span class="stat-label">Pedidos totales</span><span class="stat-value">${s.totalPedidos}</span></div>
-    <div class="stat-card"><span class="stat-label">Ventas totales</span><span class="stat-value">S/ ${s.ventasTotales.toFixed(2)}</span></div>
-    <div class="stat-card"><span class="stat-label">Pedidos pendientes</span><span class="stat-value">${s.pendientes}</span></div>
-    <div class="stat-card"><span class="stat-label">Pedidos entregados</span><span class="stat-value">${s.entregados}</span></div>
+    <div class="stat-card">
+      <span class="stat-label">
+        Pedidos totales
+      </span>
+      <span class="stat-value">
+        ${s.totalPedidos}
+      </span>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-label">
+        Ventas totales
+      </span>
+      <span class="stat-value">
+        S/ ${s.ventasTotales.toFixed(2)}
+      </span>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-label">
+        Pedidos pendientes
+      </span>
+      <span class="stat-value">
+        ${s.pendientes}
+      </span>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-label">
+        Pedidos entregados
+      </span>
+      <span class="stat-value">
+        ${s.entregados}
+      </span>
+    </div>
   `;
 
-  const maxTipo = Math.max(s.porTipo.delivery, s.porTipo.encargo, 1);
-  const tipoWrap = document.getElementById('statsPorTipo');
-  tipoWrap.innerHTML = `
-    <div class="bar-row"><span class="bar-lbl">Delivery</span><div class="bar-track"><div class="bar-fill" style="width:${(s.porTipo.delivery/maxTipo*100)}%"></div></div><span class="bar-val">S/ ${s.porTipo.delivery.toFixed(2)}</span></div>
-    <div class="bar-row"><span class="bar-lbl">Por encargo</span><div class="bar-track"><div class="bar-fill" style="width:${(s.porTipo.encargo/maxTipo*100)}%"></div></div><span class="bar-val">S/ ${s.porTipo.encargo.toFixed(2)}</span></div>
-  `;
+  const maxTipo =
+    Math.max(
+      s.porTipo.delivery,
+      s.porTipo.encargo,
+      1
+    );
 
-  const topWrap = document.getElementById('statsTopProducts');
-  if(s.topProducts.length===0){
-    topWrap.innerHTML = '<p class="hint" style="margin:0;">Todavía no hay pedidos registrados para calcular el ranking.</p>';
-  } else {
-    const maxCount = s.topProducts[0][1];
-    topWrap.innerHTML = s.topProducts.map(([name,count])=>`
-      <div class="bar-row"><span class="bar-lbl">${name}</span><div class="bar-track"><div class="bar-fill" style="width:${(count/maxCount*100)}%"></div></div><span class="bar-val">${count}</span></div>
-    `).join('');
+  const tipoWrap =
+    document.getElementById('statsPorTipo');
+
+  if(tipoWrap){
+
+    tipoWrap.innerHTML = `
+      <div class="bar-row">
+        <span class="bar-lbl">Delivery</span>
+
+        <div class="bar-track">
+          <div
+            class="bar-fill"
+            style="width:${(
+              s.porTipo.delivery /
+              maxTipo * 100
+            )}%">
+          </div>
+        </div>
+
+        <span class="bar-val">
+          S/ ${s.porTipo.delivery.toFixed(2)}
+        </span>
+      </div>
+
+      <div class="bar-row">
+        <span class="bar-lbl">Por encargo</span>
+
+        <div class="bar-track">
+          <div
+            class="bar-fill"
+            style="width:${(
+              s.porTipo.encargo /
+              maxTipo * 100
+            )}%">
+          </div>
+        </div>
+
+        <span class="bar-val">
+          S/ ${s.porTipo.encargo.toFixed(2)}
+        </span>
+      </div>
+    `;
   }
-}
 
+  const topWrap =
+    document.getElementById('statsTopProducts');
+
+  if(!topWrap) return;
+
+  if(s.topProducts.length === 0){
+
+    topWrap.innerHTML = `
+      <p class="hint" style="margin:0;">
+        Todavía no hay ventas registradas
+        para calcular el ranking.
+      </p>
+    `;
+
+  }else{
+
+    const maxCount =
+      s.topProducts[0][1];
+
+    topWrap.innerHTML =
+      s.topProducts.map(([name,count]) => `
+        <div class="bar-row">
+
+          <span class="bar-lbl">
+            ${name}
+          </span>
+
+          <div class="bar-track">
+            <div
+              class="bar-fill"
+              style="width:${(
+                count / maxCount * 100
+              )}%">
+            </div>
+          </div>
+
+          <span class="bar-val">
+            ${count}
+          </span>
+
+        </div>
+      `).join('');
+  }
+
+}
 /* ---- Gestión de productos ---- */
 async function renderAdminProducts(){
   const tbody = document.getElementById('productsTableBody');
@@ -1676,53 +1949,230 @@ const allCompras = await getPurchaseOrders();
 }
 
 /* ---- Gestión de pedidos (vista del personal) ---- */
-function renderEmployeeOrders(){
-  const tbody = document.getElementById('employeeOrdersBody');
-  if(!tbody) return;
-  const soloSemana = soloSemanaParaRolActual();
+async function renderEmployeeOrders(){
 
-  const scopeNote = document.getElementById('pedidosScopeNote');
+  const tbody =
+    document.getElementById('employeeOrdersBody');
+
+  if(!tbody) return;
+
+  const soloSemana =
+    soloSemanaParaRolActual();
+
+  const scopeNote =
+    document.getElementById('pedidosScopeNote');
+
   if(scopeNote){
-    scopeNote.textContent = soloSemana
-      ? `Mostrando pedidos de la semana en curso (${formatWeekRange()}).`
-      : 'Historial completo (vista de administrador).';
+
+    scopeNote.textContent =
+      soloSemana
+        ? `Mostrando pedidos de la semana en curso (${formatWeekRange()}).`
+        : 'Historial completo (vista de administrador).';
+
   }
 
-  const allOrders = getOrders();
-  const orders = soloSemana ? allOrders.filter(o=>isInCurrentWeek(o.createdAtISO)) : allOrders;
-  if(orders.length===0){
-    tbody.innerHTML = `<tr><td colspan="6" class="hint" style="padding:16px 0;">${soloSemana ? 'No hay pedidos esta semana.' : 'No hay pedidos registrados todavía.'}</td></tr>`;
+  try{
+
+    let orders =
+      await apiRequest('/pedidos');
+
+    if(!Array.isArray(orders)){
+      orders = [];
+    }
+
+    if(soloSemana){
+
+      orders = orders.filter(o =>
+        isInCurrentWeek(
+          o.created_at ||
+          o.createdAtISO ||
+          o.createdAt
+        )
+      );
+
+    }
+
+    if(orders.length === 0){
+
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6"
+              class="hint"
+              style="padding:16px 0;">
+
+            ${
+              soloSemana
+                ? 'No hay pedidos esta semana.'
+                : 'No hay pedidos registrados todavía.'
+            }
+
+          </td>
+        </tr>
+      `;
+
+      return;
+    }
+
+    tbody.innerHTML =
+      orders.map(o => {
+
+        const estados = {
+          pendiente: 'Pendiente',
+          confirmado: 'Confirmado',
+          en_preparacion: 'En preparación',
+          listo: 'Listo',
+          en_camino: 'En camino',
+          entregado: 'Entregado',
+          cancelado: 'Cancelado'
+        };
+
+        const estadoTexto =
+          estados[o.estado] || o.estado;
+
+        return `
+          <tr>
+
+            <td>
+              ${o.codigo}
+            </td>
+
+            <td>
+              ${o.cliente_nombre}
+            </td>
+
+            <td>
+              ${
+                o.tipo === 'delivery'
+                  ? 'Delivery'
+                  : 'Por encargo'
+              }
+            </td>
+
+            <td>
+              S/ ${Number(o.total || 0).toFixed(2)}
+            </td>
+
+            <td>
+              <span class="pill ${
+                o.estado === 'entregado'
+                  ? 'pill-ok'
+                  : 'pill-off'
+              }">
+                ${estadoTexto}
+              </span>
+            </td>
+
+            <td class="table-actions">
+
+              ${
+                o.estado !== 'entregado' &&
+                o.estado !== 'cancelado'
+
+                  ? `
+                    <button
+                      class="btn btn-outline btn-small"
+                      onclick="advanceEmployeeOrder(${o.id}, '${o.estado}')">
+                      Avanzar estado
+                    </button>
+                  `
+
+                  : '—'
+              }
+
+            </td>
+
+          </tr>
+        `;
+
+      }).join('');
+
+  }catch(error){
+
+    console.error(
+      'Error al cargar pedidos:',
+      error
+    );
+
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6"
+            class="hint"
+            style="padding:16px 0;">
+
+          ${error.message ||
+            'No se pudieron cargar los pedidos.'}
+
+        </td>
+      </tr>
+    `;
+
+  }
+}
+
+
+async function advanceEmployeeOrder(
+  id,
+  estadoActual
+){
+
+  const estados = [
+    'pendiente',
+    'confirmado',
+    'en_preparacion',
+    'listo',
+    'en_camino',
+    'entregado'
+  ];
+
+  const posicion =
+    estados.indexOf(estadoActual);
+
+  if(
+    posicion === -1 ||
+    posicion >= estados.length - 1
+  ){
     return;
   }
-  tbody.innerHTML = orders.map((o)=>{
-    const idx = allOrders.indexOf(o);
-    return `
-    <tr>
-      <td>${o.id}</td>
-      <td>${o.nombre}</td>
-      <td>${o.tipo==='delivery' ? 'Delivery' : 'Por encargo'}</td>
-      <td>S/ ${o.total.toFixed(2)}</td>
-      <td><span class="pill ${o.statusIndex===STATUS_STEPS.length-1 ? 'pill-ok':'pill-off'}">${STATUS_STEPS[o.statusIndex]}</span></td>
-      <td class="table-actions">
-        ${o.statusIndex < STATUS_STEPS.length-1
-          ? `<button class="btn btn-outline btn-small" onclick="advanceEmployeeOrder(${idx})">Avanzar estado</button>`
-          : '—'}
-      </td>
-    </tr>
-  `;
-  }).join('');
-}
-function advanceEmployeeOrder(idx){
-  const orders = getOrders();
-  if(orders[idx].statusIndex < STATUS_STEPS.length-1){
-    orders[idx].statusIndex++;
-    setOrders(orders);
-    renderEmployeeOrders();
-    renderStats();
-    showToast(`Pedido ${orders[idx].id}: ${STATUS_STEPS[orders[idx].statusIndex]}`);
-  }
-}
 
+  const nuevoEstado =
+    estados[posicion + 1];
+
+  try{
+
+    await apiRequest(
+      `/pedidos/${id}/estado`,
+      {
+        method: 'PUT',
+
+        body: JSON.stringify({
+          estado: nuevoEstado
+        })
+      }
+    );
+
+    await renderEmployeeOrders();
+
+    await renderStats();
+
+    showToast(
+      `Pedido actualizado: ${nuevoEstado}`
+    );
+
+  }catch(error){
+
+    console.error(
+      'Error al actualizar pedido:',
+      error
+    );
+
+    showToast(
+      error.message ||
+      'No se pudo actualizar el pedido'
+    );
+
+  }
+
+}
 /* =========================================================
    INIT — se ejecuta en todas las páginas
 ========================================================= */
