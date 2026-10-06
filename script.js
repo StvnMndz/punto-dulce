@@ -856,7 +856,7 @@ async function advanceOrder(id, estadoActual){
     await apiRequest(
       `/pedidos/${id}/estado`,
       {
-        method: 'PUT',
+        method: 'PATCH',
 
         body: JSON.stringify({
           estado: nuevoEstado
