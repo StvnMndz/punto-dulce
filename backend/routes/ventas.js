@@ -2,77 +2,69 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+// REGISTRAR VENTA
 router.post('/', async (req, res) => {
   try {
     const {
       id,
-      tipo,
+      pedidoId,
       nombre,
       telefono,
-      notas,
+      metodoPago,
       items,
-      total,
-      detalle,
-      fechaISO
+      subtotal,
+      total
     } = req.body;
 
-    if (!nombre || !telefono || !Array.isArray(items) || items.length === 0) {
+    if (!nombre || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         error: 'Faltan datos para registrar la venta'
       });
     }
 
-    const ventaId = id || 'PD-' + Date.now();
-    const fechaIsoFinal = fechaISO || new Date().toISOString();
+    const itemsLimpios = items.map(item => ({
+      nombre: String(item.name || item.nombre || ''),
+      cantidad: Number(item.qty || item.cantidad || 1),
+      precio: Number(item.price || item.precio || 0),
+      subtotal:
+        Number(item.qty || item.cantidad || 1) *
+        Number(item.price || item.precio || 0)
+    }));
 
-    const totalFinal = Number(total) || items.reduce(
-      (s, item) => s + (Number(item.price) * (Number(item.qty) || 1)),
-      0
-    );
+    const subtotalFinal =
+      Number(subtotal) ||
+      itemsLimpios.reduce((s, item) => s + item.subtotal, 0);
 
-    await db.query(
+    const totalFinal = Number(total) || subtotalFinal;
+
+    const [resultado] = await db.query(
       `INSERT INTO ventas
-      (id, tipo, nombre, telefono, notas, total, estado, detalle, fecha_iso)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (
+        pedido_id,
+        cliente_nombre,
+        cliente_telefono,
+        metodo_pago,
+        items,
+        subtotal,
+        total
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
-        ventaId,
-        tipo || 'delivery',
+        pedidoId || null,
         nombre,
-        telefono,
-        notas || '',
-        totalFinal,
-        'Pendiente',
-        detalle || '',
-        fechaIsoFinal
+        telefono || null,
+        metodoPago || null,
+        JSON.stringify(itemsLimpios),
+        subtotalFinal,
+        totalFinal
       ]
     );
-
-    for (const item of items) {
-      const cantidad = Number(item.qty) || 1;
-      const precio = Number(item.price) || 0;
-      const subtotal = cantidad * precio;
-
-      await db.query(
-        `INSERT INTO detalle_ventas
-        (venta_id, producto_id, producto_nombre, cantidad, precio, subtotal)
-        VALUES (?, ?, ?, ?, ?, ?)`,
-        [
-      ventaId,
-  null,
-  item.name,
-  cantidad,
-  precio,
-  subtotal
-        ]
-      );
-    }
 
     res.status(201).json({
       ok: true,
       message: 'Venta registrada correctamente',
-      ventaId,
-      total: totalFinal,
-      itemsSaved: items.length
+      ventaId: resultado.insertId,
+      total: totalFinal
     });
 
   } catch (error) {
@@ -84,10 +76,14 @@ router.post('/', async (req, res) => {
   }
 });
 
+
+// LISTAR VENTAS
 router.get('/', async (req, res) => {
   try {
     const [ventas] = await db.query(
-      'SELECT * FROM ventas ORDER BY fecha DESC'
+      `SELECT *
+       FROM ventas
+       ORDER BY fecha DESC`
     );
 
     res.json(ventas);
@@ -101,20 +97,30 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/:id/detalle', async (req, res) => {
+
+// OBTENER UNA VENTA
+router.get('/:id', async (req, res) => {
   try {
-    const [detalle] = await db.query(
-      'SELECT * FROM detalle_ventas WHERE venta_id = ?',
+    const [ventas] = await db.query(
+      `SELECT *
+       FROM ventas
+       WHERE id = ?`,
       [req.params.id]
     );
 
-    res.json(detalle);
+    if (!ventas.length) {
+      return res.status(404).json({
+        error: 'Venta no encontrada'
+      });
+    }
+
+    res.json(ventas[0]);
 
   } catch (error) {
-    console.error('Error al obtener detalle:', error);
+    console.error('Error al obtener venta:', error);
 
     res.status(500).json({
-      error: 'No se pudo obtener el detalle de la venta'
+      error: 'No se pudo obtener la venta'
     });
   }
 });
