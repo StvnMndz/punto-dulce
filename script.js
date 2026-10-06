@@ -588,7 +588,7 @@ async function submitOrder(){
 
       body: JSON.stringify({
 
-        pedidoId: pedido.id,
+        pedidoId: null,
 
         nombre,
 
