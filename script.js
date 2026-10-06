@@ -527,64 +527,77 @@ async function submitOrder(){
     };
   }
 
-  const total = cart.reduce(
-    (s, item) => s + (item.price * (item.qty || 1)),
-    0
+const total = cart.reduce(
+  (s, item) => s + (item.price * (item.qty || 1)),
+  0
+);
+
+const orderId = 'PD-' + Math.floor(1000 + Math.random() * 9000);
+
+const items = cart.map(item => ({
+  nombre: item.name,
+  detalle: item.meta || '',
+  precio: Number(item.price),
+  cantidad: Number(item.qty || 1)
+}));
+
+const notasBase = document.getElementById('notas')
+  ? document.getElementById('notas').value.trim()
+  : '';
+
+try {
+
+  const response = await fetch(`${API_BASE}/pedidos`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      codigo: orderId,
+      nombre,
+      telefono,
+      tipo: orderType,
+      direccion: detail.direccion || null,
+      fechaEntrega: detail.fechaEntrega || null,
+      notas: notasBase,
+      items
+    })
+  });
+
+  const data = await response.json();
+
+  if(!response.ok){
+    throw new Error(
+      data.error || 'No se pudo registrar el pedido'
+    );
+  }
+
+  setCart([]);
+
+  showToast(`Pedido ${data.codigo || orderId} registrado correctamente`);
+
+  sessionStorage.setItem(
+    'pd_codigo_pedido',
+    data.codigo || orderId
   );
 
-  const orderId = 'PD-' + Math.floor(1000 + Math.random() * 9000);
+  sessionStorage.setItem(
+    'pd_telefono_pedido',
+    telefono
+  );
 
-  const order = {
-    id: orderId,
-    tipo: orderType,
-    nombre,
-    telefono,
-    notas: document.getElementById('notas').value.trim(),
-    items: cart,
-    total,
-    detalle: JSON.stringify(detail),
-    fechaISO: new Date().toISOString()
-  };
+  setTimeout(() => {
+    window.location.href = 'seguimiento.html';
+  }, 900);
 
-  try{
-    const response = await fetch(`${API_BASE}/ventas`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(order)
-    });
+} catch(error) {
 
-    const data = await response.json();
+  console.error('Error al registrar pedido:', error);
 
-    if(!response.ok){
-      throw new Error(data.error || 'No se pudo registrar la venta');
-    }
-
-    const orders = getOrders();
-
-    orders.unshift({
-      ...order,
-      statusIndex: 0,
-      createdAt: new Date().toLocaleString('es-PE'),
-      createdAtISO: new Date().toISOString()
-    });
-
-    setOrders(orders);
-    setCart([]);
-
-    showToast(`Pedido ${orderId} confirmado`);
-
-    setTimeout(()=>{
-      window.location.href = 'seguimiento.html';
-    }, 900);
-
-  }catch(error){
-    console.error('Error al registrar venta:', error);
-    showToast('No se pudo registrar el pedido');
-  }
+  showToast(
+    error.message || 'No se pudo registrar el pedido'
+  );
 }
-
 /* =========================================================
    PÁGINA: seguimiento.html
 ========================================================= */
