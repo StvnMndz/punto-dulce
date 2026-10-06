@@ -596,35 +596,174 @@ sessionStorage.setItem(
 /* =========================================================
    PÁGINA: seguimiento.html
 ========================================================= */
-function renderOrders(){
+async function renderOrders(){
+
   const wrap = document.getElementById('ordersList');
+
   if(!wrap) return;
-  const orders = getOrders();
-  if(orders.length===0){
-    wrap.innerHTML = '<p class="no-orders">Todavía no tienes pedidos confirmados. <a href="catalogo.html">Ver catálogo</a></p>';
+
+  const codigo = sessionStorage.getItem('pd_codigo_pedido');
+  const telefono = sessionStorage.getItem('pd_telefono_pedido');
+
+  if(!codigo || !telefono){
+    wrap.innerHTML = `
+      <p class="no-orders">
+        No tienes un pedido seleccionado.
+        <a href="catalogo.html">Ver catálogo</a>
+      </p>
+    `;
     return;
   }
-  wrap.innerHTML = orders.map((o, idx)=>`
-    <div class="order-card">
-      <div class="order-card-top">
-        <div>
-          <div class="order-id">${o.id} · ${o.tipo==='delivery' ? 'Delivery' : 'Por encargo'}</div>
-          <div class="order-sub">${o.nombre} · ${o.createdAt} · Total S/ ${o.total.toFixed(2)}</div>
-          ${o.tipo==='encargo' ? `<div class="order-sub">Entrega: ${o.detail.fechaEntrega} · Anticipo registrado: S/ ${o.detail.anticipo.toFixed(2)}</div>` : `<div class="order-sub">Entrega en: ${o.detail.direccion}</div>`}
-        </div>
-        ${o.statusIndex < STATUS_STEPS.length-1 ? `<button class="btn btn-outline btn-small" onclick="advanceOrder(${idx})">Avanzar estado</button>` : `<span style="background:var(--pink);color:var(--berry);border-radius:999px;padding:6px 14px;font-size:.78rem;font-weight:700;">Completado</span>`}
-      </div>
-      <div class="stepper">
-        ${STATUS_STEPS.map((s,i)=>`
-          <div class="step ${i<=o.statusIndex ? 'done':''}">
-            <div class="bar"></div>
-            <div class="dot">${i<=o.statusIndex ? '✓' : ''}</div>
-            <div class="lbl">${s}</div>
+
+  try{
+
+    wrap.innerHTML = `
+      <p class="no-orders">
+        Cargando pedido...
+      </p>
+    `;
+
+    const pedido = await apiRequest(
+      `/pedidos/seguimiento/${encodeURIComponent(codigo)}?telefono=${encodeURIComponent(telefono)}`
+    );
+
+    const items = typeof pedido.items === 'string'
+      ? JSON.parse(pedido.items)
+      : pedido.items;
+
+    const estados = {
+      pendiente: 'Pendiente',
+      confirmado: 'Confirmado',
+      en_preparacion: 'En preparación',
+      listo: 'Listo',
+      en_camino: 'En camino',
+      entregado: 'Entregado',
+      cancelado: 'Cancelado'
+    };
+
+    const estadoTexto =
+      estados[pedido.estado] || pedido.estado;
+
+    const estadosOrden = [
+      'pendiente',
+      'confirmado',
+      'en_preparacion',
+      'listo',
+      'entregado'
+    ];
+
+    const estadoActual =
+      estadosOrden.indexOf(pedido.estado);
+
+    wrap.innerHTML = `
+      <div class="order-card">
+
+        <div class="order-card-top">
+
+          <div>
+
+            <div class="order-id">
+              ${pedido.codigo}
+              ·
+              ${pedido.tipo === 'delivery'
+                ? 'Delivery'
+                : 'Por encargo'}
+            </div>
+
+            <div class="order-sub">
+              Cliente: ${pedido.cliente_nombre}
+            </div>
+
+            <div class="order-sub">
+              Estado:
+              <strong>${estadoTexto}</strong>
+            </div>
+
+            <div class="order-sub">
+              Total:
+              <strong>
+                S/ ${Number(pedido.total).toFixed(2)}
+              </strong>
+            </div>
+
           </div>
-        `).join('')}
+
+        </div>
+
+        <div class="stepper">
+
+          ${STATUS_STEPS.map((s, i) => `
+
+            <div class="step ${i <= estadoActual ? 'done' : ''}">
+
+              <div class="bar"></div>
+
+              <div class="dot">
+                ${i <= estadoActual ? '✓' : ''}
+              </div>
+
+              <div class="lbl">
+                ${s}
+              </div>
+
+            </div>
+
+          `).join('')}
+
+        </div>
+
+        <div style="margin-top:20px;">
+
+          <h3>Productos</h3>
+
+          ${items.map(item => `
+
+            <div class="order-sub">
+
+              ${item.nombre}
+              × ${item.cantidad}
+
+              —
+              S/ ${(
+                Number(item.precio) *
+                Number(item.cantidad)
+              ).toFixed(2)}
+
+            </div>
+
+          `).join('')}
+
+        </div>
+
+        ${
+          pedido.direccion
+            ? `
+              <div class="order-sub" style="margin-top:15px;">
+                Dirección:
+                ${pedido.direccion}
+              </div>
+            `
+            : ''
+        }
+
       </div>
-    </div>
-  `).join('');
+    `;
+
+  }catch(error){
+
+    console.error(
+      'Error al consultar pedido:',
+      error
+    );
+
+    wrap.innerHTML = `
+      <p class="no-orders">
+        ${error.message || 'No se pudo consultar el pedido.'}
+      </p>
+    `;
+
+  }
+
 }
 function advanceOrder(idx){
   const orders = getOrders();
