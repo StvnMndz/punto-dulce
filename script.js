@@ -2037,7 +2037,7 @@ let orders =
   Array.isArray(respuesta)
     ? respuesta
     : (respuesta.pedidos || []);
-    }
+    
 
     if(soloSemana){
 
