@@ -1144,10 +1144,9 @@ async function computeStats(soloSemana){
 
 const [respuestaPedidos, ventas] =
   await Promise.all([
-    apiRequest('/pedidos'),
+    apiRequest('/pedidos?page=1&limit=1000'),
     apiRequest('/ventas')
   ]);
-
 let orders =
   Array.isArray(respuestaPedidos)
     ? respuestaPedidos
