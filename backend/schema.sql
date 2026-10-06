@@ -208,3 +208,25 @@ CREATE TABLE IF NOT EXISTS detalle_ventas (
     FOREIGN KEY (venta_id)
         REFERENCES ventas(id)
 );
+
+USE punto_dulce;
+
+CREATE TABLE IF NOT EXISTS pedidos (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  codigo           VARCHAR(12) NOT NULL UNIQUE,
+  cliente_nombre   VARCHAR(120) NOT NULL,
+  cliente_telefono VARCHAR(30)  NOT NULL,
+  tipo             ENUM('delivery','encargo') NOT NULL DEFAULT 'delivery',
+  direccion        VARCHAR(255) NULL,
+  fecha_entrega    DATETIME NULL,
+  notas            TEXT NULL,
+  items            JSON NOT NULL,
+  total            DECIMAL(10,2) NOT NULL DEFAULT 0,
+  estado           ENUM('pendiente','confirmado','en_preparacion','listo','en_camino','entregado','cancelado')
+                   NOT NULL DEFAULT 'pendiente',
+  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_estado (estado),
+  INDEX idx_cliente (cliente_nombre),
+  INDEX idx_created (created_at)
+);
