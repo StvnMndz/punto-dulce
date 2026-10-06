@@ -145,15 +145,15 @@ router.put('/:id/estado', async (req, res) => {
       });
     }
 
-    const [resultado] = await db.query(
-      `UPDATE pedidos
-       SET estado = ?
-       WHERE id = ?`,
-      [
-        estado,
-        req.params.id
-      ]
-    );
+   const [resultado] = await pool.query(
+  `UPDATE pedidos
+   SET estado = ?
+   WHERE id = ?`,
+  [
+    estado,
+    req.params.id
+  ]
+);
 
     if(resultado.affectedRows === 0){
       return res.status(404).json({
