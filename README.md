@@ -24,7 +24,9 @@ punto-dulce/
 │   ├── package.json
 │   ├── .env.example
 │   ├── middleware/auth.js
-│   └── routes/ (auth.js, empleados.js)
+│   ├── daos/ (acceso a datos por entidad)
+│   ├── controllers/ (lógica de solicitudes)
+│   └── routes/ (definición de endpoints)
 └── README.md
 ```
 
@@ -34,14 +36,14 @@ Antes, las cuentas del personal se guardaban en `localStorage`. Ahora:
 
 - **Cualquier persona puede registrarse** desde "Acceso personal" → pestaña "Registrarme", con nombre, teléfono (opcional), usuario y contraseña.
 - **Toda cuenta nueva se crea con rol `pendiente`**. Nadie puede elegir "administrador" ni "ventas" al registrarse.
-- Un **administrador** entra al panel, va a la pestaña **"👥 Personal"** y le asigna un rol real a cada cuenta: `Administrador`, `Ventas / Atención` o `Producción` (o la deshabilita).
+- Un **administrador** entra al panel, va a la pestaña **"👥 Personal"** y le asigna un rol real a cada cuenta: `Administrador`, `Ventas / Atención` o `Almacén / Producción` (o la deshabilita).
 - Mientras una cuenta esté `pendiente`, esa persona puede iniciar sesión pero **no ve ninguna pestaña del panel**: solo un aviso de que su cuenta está esperando asignación de rol.
 - Según el rol asignado, el panel muestra distintas pestañas:
-  - **Administrador**: Resumen, Productos, Materia prima, Pedidos y Personal (puede asignar roles a los demás).
-  - **Ventas / Atención**: Resumen y Pedidos.
-  - **Producción**: Materia prima y Productos.
+  - **Administrador**: Resumen, Ventas, Productos, Materia prima, Pedidos y Personal.
+  - **Ventas / Atención**: Resumen, Ventas y Pedidos; puede registrar ventas, filtrar el historial semanal y avanzar pedidos.
+  - **Almacén / Producción**: Materia prima, órdenes de compra y productos; tiene búsqueda y alertas de stock bajo.
 
-Todo esto vive en la tabla `empleados` de la base de datos `punto_dulce` en MySQL (contraseñas con hash `bcrypt`, sesiones con JSON Web Token). El resto del sistema (catálogo editable, materia prima, pedidos) sigue guardándose en `localStorage` del navegador, tal como antes — solo el registro/login/roles del personal se movió a una base de datos real.
+Las cuentas del personal y la operación del panel (productos, insumos, compras, pedidos y ventas) viven en MySQL. Las contraseñas se guardan con hash `bcrypt` y las sesiones usan JSON Web Token. El carrito del cliente continúa en `localStorage`.
 
 ## Cómo levantar todo en VS Code
 
@@ -98,5 +100,24 @@ Pruébalo abriendo `http://localhost:4000/api/health` en el navegador — debe r
 
 - HTML, CSS y JavaScript puro en el front-end, sin frameworks ni build tools.
 - Backend: Node.js + Express + `mysql2` (consultas parametrizadas), `bcryptjs` para hashear contraseñas y `jsonwebtoken` para las sesiones.
-- El carrito, los pedidos, el catálogo editable y la materia prima se guardan en `localStorage` del navegador. **Solo** el registro, login y roles del personal usan MySQL a través del backend en `backend/`.
-- Es un prototipo educativo: no incluye HTTPS, límites de intentos de login, recuperación de contraseña ni la arquitectura completa en capas (DAO, DTO, etc.) que suele pedirse en un informe formal — quedaría como siguiente paso natural si se lleva a producción.
+- El carrito se guarda en `localStorage`; las cuentas del personal, productos, insumos, compras, ventas y pedidos se guardan en MySQL a través del backend.
+- Es un prototipo educativo: no incluye HTTPS, límites de intentos de login ni recuperación de contraseña.
+
+## Arquitectura MVC y DAO (backend)
+
+El backend aplica MVC/DAO a autenticación, empleados, productos, insumos, compras, ventas y pedidos:
+
+```
+routes/       Define URLs y middlewares; envía cada solicitud al controlador.
+controllers/  Valida la solicitud, aplica reglas del negocio y arma la respuesta JSON.
+daos/         Ejecuta consultas SQL y devuelve registros; no conoce Express.
+db.js         Configura el pool de MySQL desde variables de entorno.
+```
+
+El flujo de una petición es `Ruta → Controlador → DAO → MySQL`; la respuesta vuelve del controlador al cliente como JSON (vista de la API). Cada entidad cuenta con su DAO (`empleado`, `producto`, `insumo`, `compra`, `venta` y `pedido`). Las rutas solo conectan endpoints y middlewares con sus controladores; las consultas SQL se mantienen en los DAOs.
+
+Para conectar el backend, copia `backend/.env.example` a `backend/.env` y configura `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` y `DB_SSL` según tu servidor. El archivo `.env` no debe compartirse ni subirse al repositorio.
+
+Si la tabla `ventas` ya existía antes de esta versión, agrega la columna usada para relacionar una venta con su pedido con `ALTER TABLE ventas ADD COLUMN pedido_id VARCHAR(12) NULL;`.
+
+El panel de ventas permite registrar, buscar, actualizar y eliminar ventas; se puede filtrar por fecha y forma de pago, abrir el detalle de cada operación y exportar el resultado filtrado como PDF desde la ventana de impresión. Almacén permite administrar productos e insumos, gestionar compras con ajuste de stock, filtrar por fecha, artículo, tienda o responsable y recibir alertas al alcanzar el stock mínimo o agotarse. El panel también alerta sobre pedidos pendientes por más de 24 horas y entregas próximas. Pedidos tiene filtros de búsqueda, estado y tipo; el diseño se adapta a pantallas móviles.

@@ -30,20 +30,53 @@
   <div class="wrap">
     <div class="section-head">
       <h2>Panel del personal</h2>
-      <p>Administra el catálogo, revisa las estadísticas de ventas, lleva el registro de materia prima y da seguimiento a los pedidos.</p>
+      <p>Gestiona ventas, catálogo, almacén y pedidos desde un solo lugar.</p>
     </div>
 
     <div class="panel-tabs">
       <button class="panel-tab active" data-panel="resumen">📊 Resumen</button>
-      <button class="panel-tab" data-panel="productos">🧁 Productos</button>
+      <button class="panel-tab" data-panel="ventas">💳 Ventas</button>
       <button class="panel-tab" data-panel="insumos">🧺 Materia prima</button>
+      <button class="panel-tab" data-panel="productos">🧁 Productos</button>
       <button class="panel-tab" data-panel="pedidos">📦 Pedidos</button>
       <button class="panel-tab" data-panel="personal">👥 Personal</button>
+    </div>
+    <div class="operational-alerts" id="operationalAlerts" role="status" aria-live="polite" style="display:none;"></div>
+
+    <!-- ================= VENTAS ================= -->
+    <div class="panel-section" id="panel-ventas">
+      <div class="panel-section-head">
+        <div>
+          <h2>Registro de ventas</h2>
+          <p>Busca por código, cliente o teléfono; filtra por fecha y medio de pago.</p>
+          <p class="hint" id="salesScopeNote" style="margin-top:4px;"></p>
+        </div>
+        <div class="panel-head-actions">
+          <button class="btn btn-outline btn-small" id="btnActualizarVentas" type="button">↻ Actualizar</button>
+          <button class="btn btn-outline btn-small" id="btnExportSalesPdf" type="button">↓ Exportar PDF</button>
+          <button class="btn btn-primary btn-small" id="btnNuevaVenta" type="button">+ Registrar venta</button>
+        </div>
+      </div>
+      <div class="stats-grid sales-summary" id="salesSummary"></div>
+      <div class="panel-filters">
+        <label class="filter-search"><span>Buscar venta</span><input id="salesSearch" type="search" placeholder="Código, cliente o teléfono"></label>
+        <label><span>Desde</span><input id="salesFrom" type="date"></label>
+        <label><span>Hasta</span><input id="salesTo" type="date"></label>
+        <label><span>Medio de pago</span><select id="salesPayment"><option value="">Todos</option><option value="efectivo">Efectivo</option><option value="yape">Yape</option><option value="plin">Plin</option><option value="tarjeta">Tarjeta</option><option value="pendiente">Pendiente</option></select></label>
+        <button class="btn btn-outline btn-small" type="button" id="clearSalesFilters">Limpiar filtros</button>
+      </div>
+      <p class="filter-result-count" id="salesResultCount" aria-live="polite"></p>
+      <div class="admin-table-wrap">
+        <table class="admin-table sales-table">
+          <thead><tr><th>Fecha</th><th>Venta</th><th>Cliente</th><th>Productos</th><th>Pago</th><th>Total</th><th>Detalle</th></tr></thead>
+          <tbody id="salesTableBody"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="panel-pending-notice" id="pendingNotice" style="display:none;">
       <h3>Tu cuenta está pendiente de asignación de rol</h3>
-      <p>Ya creaste tu cuenta de personal correctamente. Un administrador debe asignarte un rol (Administrador, Ventas / Atención o Producción) desde la pestaña "Personal" para que puedas usar el panel. Vuelve a ingresar más tarde o coméntaselo a un administrador.</p>
+      <p>Ya creaste tu cuenta de personal correctamente. Un administrador debe asignarte un rol (Administrador, Ventas / Atención o Almacén / Producción) desde la pestaña "Personal" para que puedas usar el panel. Vuelve a ingresar más tarde o coméntaselo a un administrador.</p>
     </div>
 
     <!-- ================= RESUMEN / ESTADÍSTICAS ================= -->
@@ -77,6 +110,13 @@
         </div>
         <button class="btn btn-primary btn-small" id="btnNuevoProducto">+ Nuevo producto</button>
       </div>
+      <div class="panel-filters">
+        <label class="filter-search"><span>Buscar producto</span><input id="productsSearch" type="search" placeholder="Nombre del producto"></label>
+        <label><span>Categoría</span><select id="productsCategory"><option value="">Todas</option><option value="cupcake">Cupcakes</option><option value="brownie">Brownies</option><option value="alfajor">Alfajores</option><option value="galleta">Galletas</option><option value="torta">Tortas</option></select></label>
+        <label><span>Estado</span><select id="productsStatus"><option value="">Todos</option><option value="available">Disponibles</option><option value="hidden">Ocultos</option></select></label>
+        <button class="btn btn-outline btn-small" type="button" id="clearProductsFilters">Limpiar</button>
+      </div>
+      <p class="filter-result-count" id="productsResultCount" aria-live="polite"></p>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -96,6 +136,12 @@
         </div>
         <button class="btn btn-primary btn-small" id="btnNuevoInsumo">+ Nuevo insumo</button>
       </div>
+      <div class="panel-filters">
+        <label class="filter-search"><span>Buscar insumo</span><input id="suppliesSearch" type="search" placeholder="Nombre o proveedor"></label>
+        <label><span>Estado de stock</span><select id="suppliesStatus"><option value="">Todos</option><option value="low">Stock bajo</option><option value="normal">Stock normal</option></select></label>
+        <button class="btn btn-outline btn-small" type="button" id="clearSuppliesFilters">Limpiar</button>
+      </div>
+      <p class="filter-result-count" id="suppliesResultCount" aria-live="polite"></p>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -113,10 +159,17 @@
         </div>
         <button class="btn btn-primary btn-small" id="btnNuevaCompra">+ Nueva orden de compra</button>
       </div>
+      <div class="panel-filters purchase-filters">
+        <label class="filter-search"><span>Buscar compra</span><input id="purchasesSearch" type="search" placeholder="Insumo, tienda o responsable"></label>
+        <label><span>Desde</span><input id="purchasesFrom" type="date"></label>
+        <label><span>Hasta</span><input id="purchasesTo" type="date"></label>
+        <button class="btn btn-outline btn-small" type="button" id="clearPurchasesFilters">Limpiar</button>
+      </div>
+      <p class="filter-result-count" id="purchasesResultCount" aria-live="polite"></p>
       <div class="admin-table-wrap">
-        <table class="admin-table">
+        <table class="admin-table purchase-table">
           <thead>
-            <tr><th>Fecha</th><th>Insumo</th><th>Cantidad</th><th>Costo</th><th>Comprado en</th><th>Registrado por</th></tr>
+            <tr><th>Fecha</th><th>Insumo</th><th>Cantidad</th><th>Costo</th><th>Comprado en</th><th>Registrado por</th><th>Acciones</th></tr>
           </thead>
           <tbody id="purchaseOrdersBody"></tbody>
         </table>
@@ -132,6 +185,13 @@
           <p class="hint" id="pedidosScopeNote" style="margin-top:4px;"></p>
         </div>
       </div>
+      <div class="panel-filters">
+        <label class="filter-search"><span>Buscar pedido</span><input id="ordersSearch" type="search" placeholder="Código, cliente o teléfono"></label>
+        <label><span>Estado</span><select id="ordersStatus"><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="confirmado">Confirmado</option><option value="en_preparacion">En preparación</option><option value="listo">Listo</option><option value="en_camino">En camino</option><option value="entregado">Entregado</option><option value="cancelado">Cancelado</option></select></label>
+        <label><span>Tipo</span><select id="ordersType"><option value="">Todos</option><option value="delivery">Delivery</option><option value="encargo">Por encargo</option></select></label>
+        <button class="btn btn-outline btn-small" type="button" id="clearOrdersFilters">Limpiar</button>
+      </div>
+      <p class="filter-result-count" id="ordersResultCount" aria-live="polite"></p>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -161,6 +221,38 @@
     </div>
   </div>
 </section>
+
+<!-- MODAL: detalle de venta -->
+<div class="modal-overlay" id="saleDetailModal">
+  <div class="modal">
+    <button class="modal-close" id="saleDetailModalClose" type="button" aria-label="Cerrar">✕</button>
+    <h3>Detalle de venta</h3>
+    <div id="saleDetailContent"></div>
+  </div>
+</div>
+
+<!-- MODAL: registrar venta directa -->
+<div class="modal-overlay" id="saleModal">
+  <div class="modal">
+    <button class="modal-close" id="saleModalClose" type="button" aria-label="Cerrar">✕</button>
+    <h3>Registrar venta</h3>
+    <p class="modal-sub">Registra una venta atendida en tienda. El total se calcula con los productos agregados.</p>
+    <form id="saleForm">
+      <input id="saleOrderId" type="hidden">
+      <div class="field"><label for="saleCustomer">Nombre del cliente</label><input id="saleCustomer" required maxlength="150"></div>
+      <div class="field"><label for="salePhone">Teléfono</label><input id="salePhone" maxlength="30" inputmode="tel"></div>
+      <div class="field"><label for="salePaymentMethod">Medio de pago</label><select id="salePaymentMethod" required><option value="Efectivo">Efectivo</option><option value="Yape">Yape</option><option value="Plin">Plin</option><option value="Tarjeta">Tarjeta</option><option value="Pendiente">Pendiente</option></select></div>
+      <div class="sale-add-row">
+        <div class="field"><label for="saleProduct">Producto</label><select id="saleProduct" required></select></div>
+        <div class="field sale-quantity"><label for="saleQuantity">Cantidad</label><input id="saleQuantity" type="number" min="1" max="99" value="1" required></div>
+      </div>
+      <button type="button" class="btn btn-outline btn-full" id="btnAddSaleItem">+ Agregar producto</button>
+      <div id="saleItemsContainer" class="sale-items-list" aria-live="polite"></div>
+      <div class="sale-total-line"><span>Total</span><strong id="saleTotal">S/ 0.00</strong></div>
+      <button type="submit" class="btn btn-primary btn-full" id="btnSaveSale">Guardar venta</button>
+    </form>
+  </div>
+</div>
 
 <!-- MODAL: producto -->
 <div class="modal-overlay" id="productModal">
@@ -302,6 +394,22 @@
     Registrar compra
   </button>
 </form>
+  </div>
+</div>
+
+<!-- MODAL: actualizar artículo de compra -->
+<div class="modal-overlay" id="purchaseEditModal">
+  <div class="modal">
+    <button class="modal-close" id="purchaseEditModalClose" type="button" aria-label="Cerrar">✕</button>
+    <h3>Actualizar compra</h3>
+    <p class="modal-sub" id="purchaseEditItemName"></p>
+    <form id="purchaseEditForm">
+      <div class="field"><label for="purchaseEditQuantity">Cantidad comprada</label><input id="purchaseEditQuantity" type="number" min="0.01" step="0.01" required></div>
+      <div class="field"><label for="purchaseEditCost">Costo total (S/)</label><input id="purchaseEditCost" type="number" min="0" step="0.01" required></div>
+      <div class="field"><label for="purchaseEditStore">Comprado en</label><input id="purchaseEditStore" maxlength="150"></div>
+      <div class="field"><label for="purchaseEditDate">Fecha de compra</label><input id="purchaseEditDate" type="date" required></div>
+      <button type="submit" class="btn btn-primary btn-full" id="purchaseEditSave">Guardar cambios</button>
+    </form>
   </div>
 </div>
 

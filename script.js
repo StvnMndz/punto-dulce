@@ -48,9 +48,8 @@ const CUSTOM_OPTIONS = {
 const STATUS_STEPS = ['Pendiente','Confirmado','En preparación','Listo','Entregado'];
 
 /* ---------------- FILTRO SEMANAL ----------------
-   Vendedor (ventas) y almacenero (producción) solo ven datos de la
-   semana en curso (lunes a domingo). El administrador ve todo el
-   historial sin filtrar. */
+   Ventas y pedidos del rol de atención se limitan a la semana en curso.
+   Almacén necesita el historial completo para revisar y corregir compras. */
 function getWeekRange(){
   const now = new Date();
   const day = now.getDay(); // 0=domingo ... 6=sábado
@@ -78,7 +77,7 @@ function formatWeekRange(){
 // El rol de la cuenta con sesión activa en el panel (se llena en initEmployeePanel).
 let currentEmployeeRole = null;
 function soloSemanaParaRolActual(){
-  return !!currentEmployeeRole && currentEmployeeRole !== 'administrador';
+  return currentEmployeeRole === 'ventas';
 }
 
 /* ---------------- STATE (localStorage) ---------------- */
@@ -116,13 +115,13 @@ function clearSession(){ localStorage.removeItem('pd_employee_session'); clearTo
 const ROLE_LABELS = {
   administrador: 'Administrador',
   ventas: 'Ventas / Atención',
-  produccion: 'Producción',
+  produccion: 'Almacén / Producción',
   pendiente: 'Pendiente de asignación'
 };
 // Qué pestañas del panel puede ver cada rol una vez asignado.
 const ROLE_TABS = {
-  administrador: ['resumen','productos','insumos','pedidos','personal'],
-  ventas: ['resumen','pedidos'],
+  administrador: ['resumen','ventas','productos','insumos','pedidos','personal'],
+  ventas: ['resumen','ventas','pedidos'],
   produccion: ['insumos','productos'],
 };
 
@@ -146,6 +145,74 @@ async function apiRequest(path, options = {}){
 }
 
 let suppliesCache = [];
+let productsCache = [];
+let salesCache = [];
+let purchaseOrdersCache = [];
+let employeeOrdersCache = [];
+
+async function fetchAllEmployeeOrders(){
+  const first = await apiRequest('/pedidos?page=1&limit=100');
+  const orders = Array.isArray(first) ? first : (first.pedidos || []);
+  const pages = Math.min(100, Number(first.pages) || 1);
+  for(let page = 2; page <= pages; page++){
+    const response = await apiRequest(`/pedidos?page=${page}&limit=100`);
+    orders.push(...(response.pedidos || []));
+  }
+  return orders;
+}
+
+function renderOperationalAlerts(){
+  const wrap = document.getElementById('operationalAlerts');
+  if(!wrap || !currentEmployeeRole || currentEmployeeRole === 'pendiente') return;
+  const cards = [];
+  if(['administrador','produccion'].includes(currentEmployeeRole)){
+    const critical = suppliesCache.filter(item => item.cantidad <= 0);
+    const low = suppliesCache.filter(item => item.cantidad > 0 && item.cantidad <= item.stockMinimo);
+    if(critical.length) cards.push({ level:'critical', title:`${critical.length} insumo${critical.length === 1 ? '' : 's'} agotado${critical.length === 1 ? '' : 's'}`,
+      detail:critical.slice(0,3).map(item => item.nombre).join(', '), panel:'insumos' });
+    if(low.length) cards.push({ level:'warning', title:`${low.length} insumo${low.length === 1 ? '' : 's'} en su stock mínimo`,
+      detail:low.slice(0,3).map(item => `${item.nombre} (${item.cantidad} ${item.unidad})`).join(', '), panel:'insumos' });
+    const unavailable = productsCache.filter(product => product.disponible === false);
+    if(unavailable.length) cards.push({ level:'info', title:`${unavailable.length} producto${unavailable.length === 1 ? '' : 's'} oculto${unavailable.length === 1 ? '' : 's'} del catálogo`,
+      detail:'Confirma que estén ocultos intencionalmente.', panel:'productos' });
+  }
+  if(['administrador','ventas'].includes(currentEmployeeRole)){
+    const openOrders = employeeOrdersCache.filter(order => !['entregado','cancelado'].includes(order.estado));
+    const overdue = openOrders.filter(order => {
+      const created = new Date(order.created_at || order.createdAt || '').getTime();
+      return Number.isFinite(created) && Date.now() - created > 24 * 60 * 60 * 1000;
+    });
+    const dueSoon = openOrders.filter(order => {
+      if(!order.fecha_entrega) return false;
+      const due = new Date(order.fecha_entrega).getTime();
+      return due >= Date.now() && due <= Date.now() + 24 * 60 * 60 * 1000;
+    });
+    const lateDeliveries = openOrders.filter(order => {
+      if(!order.fecha_entrega) return false;
+      const due = new Date(order.fecha_entrega).getTime();
+      return Number.isFinite(due) && due < Date.now();
+    });
+    if(lateDeliveries.length) cards.push({ level:'critical', title:`${lateDeliveries.length} entrega${lateDeliveries.length === 1 ? '' : 's'} vencida${lateDeliveries.length === 1 ? '' : 's'}`,
+      detail:'Actualiza el pedido o contacta al cliente.', panel:'pedidos' });
+    if(overdue.length) cards.push({ level:'warning', title:`${overdue.length} pedido${overdue.length === 1 ? '' : 's'} pendiente${overdue.length === 1 ? '' : 's'} por más de 24 horas`,
+      detail:'Revisa su estado y coordina con el cliente.', panel:'pedidos' });
+    if(dueSoon.length) cards.push({ level:'info', title:`${dueSoon.length} entrega${dueSoon.length === 1 ? '' : 's'} en las próximas 24 horas`,
+      detail:'Verifica preparación y coordinación de entrega.', panel:'pedidos' });
+  }
+  wrap.style.display = 'block';
+  wrap.innerHTML = cards.length ? cards.map(card => `
+    <article class="alert-card alert-${card.level}">
+      <span class="alert-mark" aria-hidden="true">${card.level === 'critical' ? '!' : card.level === 'warning' ? '⚠' : 'i'}</span>
+      <div><strong>${escapeHtml(card.title)}</strong><p>${escapeHtml(card.detail)}</p></div>
+      <button type="button" class="btn btn-outline btn-small" data-alert-panel="${card.panel}">Revisar</button>
+    </article>`).join('') : '<div class="alert-clear"><strong>✓ Sin alertas activas</strong><span>El inventario y las operaciones están al día.</span></div>';
+}
+
+function escapeHtml(value){
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  })[char]);
+}
 
 function normalizeSupply(s){
   return {
@@ -588,7 +655,7 @@ async function submitOrder(){
 
       body: JSON.stringify({
 
-        pedidoId: null,
+        pedidoId: pedido.codigo,
 
         nombre,
 
@@ -964,6 +1031,9 @@ function initEmployeeAuth(){
 let editingProductId = null;
 let editingSupplyId = null;
 let purchaseItems = [];
+let manualSaleItems = [];
+let editingSaleId = null;
+let editingPurchaseDetailId = null;
 
 function requireEmployeeSession(){
   const panel = document.getElementById('employeePanel');
@@ -1037,11 +1107,17 @@ async function initEmployeePanel(){
   const tienePermisos = applyRolePermissions(empleado.rol);
 
   initPanelTabs();
-  renderStats();
-  renderAdminProducts();
-  renderSupplies();
-  renderPurchaseOrders();
-  renderEmployeeOrders();
+  if(['administrador','ventas'].includes(empleado.rol)){
+    renderStats();
+    renderSales();
+    renderEmployeeOrders();
+    productsCache = await getProducts();
+  }
+  if(['administrador','produccion'].includes(empleado.rol)){
+    renderAdminProducts();
+    renderSupplies();
+    renderPurchaseOrders();
+  }
   if(empleado.rol === 'administrador'){
     renderPersonalList();
   }
@@ -1061,6 +1137,25 @@ async function initEmployeePanel(){
   document.getElementById('purchaseForm').addEventListener('submit', submitPurchaseForm);
   document.getElementById('purchaseModalClose').addEventListener('click', closePurchaseModal);
    document.getElementById('btnAgregarArticulo').addEventListener('click', addPurchaseItem);
+  document.getElementById('purchaseEditModalClose').addEventListener('click', closePurchaseEditModal);
+  document.getElementById('purchaseEditForm').addEventListener('submit', submitPurchaseEditForm);
+
+  bindPanelFilters();
+  document.getElementById('btnActualizarVentas').addEventListener('click', renderSales);
+  document.getElementById('btnExportSalesPdf').addEventListener('click', exportSalesPdf);
+  document.getElementById('operationalAlerts').addEventListener('click', event => {
+    const button = event.target.closest('[data-alert-panel]');
+    if(button) document.querySelector(`.panel-tab[data-panel="${button.dataset.alertPanel}"]`)?.click();
+  });
+  document.getElementById('salesTableBody').addEventListener('click', event => {
+    const button = event.target.closest('[data-sale-id]');
+    if(button) showSaleDetails(button.dataset.saleId);
+  });
+  document.getElementById('saleDetailModalClose').addEventListener('click', () => document.getElementById('saleDetailModal').classList.remove('open'));
+  document.getElementById('btnNuevaVenta').addEventListener('click', openSaleModal);
+  document.getElementById('saleModalClose').addEventListener('click', closeSaleModal);
+  document.getElementById('btnAddSaleItem').addEventListener('click', addManualSaleItem);
+  document.getElementById('saleForm').addEventListener('submit', submitManualSale);
 
   if(!tienePermisos) return;
 }
@@ -1144,13 +1239,10 @@ async function computeStats(soloSemana){
 
 const [respuestaPedidos, ventas] =
   await Promise.all([
-    apiRequest('/pedidos?page=1&limit=1000'),
+    fetchAllEmployeeOrders(),
     apiRequest('/ventas')
   ]);
-let orders =
-  Array.isArray(respuestaPedidos)
-    ? respuestaPedidos
-    : (respuestaPedidos.pedidos || []);
+let orders = respuestaPedidos;
 
 let sales =
   Array.isArray(ventas)
@@ -1207,6 +1299,7 @@ let sales =
   sales.forEach(v => {
 
     let items = v.items;
+    if(!Array.isArray(items)) items = getSaleDetails(v).items;
 
     if(typeof items === 'string'){
       try {
@@ -1413,6 +1506,277 @@ async function renderStats(){
   }
 
 }
+/* ---- Ventas: consulta, búsqueda y detalle ---- */
+function getSaleDetails(sale){
+  let detail = sale.detalle;
+  if(typeof detail === 'string'){
+    try { detail = JSON.parse(detail); } catch { detail = {}; }
+  }
+  const items = Array.isArray(detail?.items) ? detail.items : [];
+  const payment = detail?.metodoPago || sale.notas || 'Pendiente';
+  return { items, payment };
+}
+
+function filterSales(){
+  const query = (document.getElementById('salesSearch')?.value || '').trim().toLowerCase();
+  const from = document.getElementById('salesFrom')?.value || '';
+  const to = document.getElementById('salesTo')?.value || '';
+  const payment = (document.getElementById('salesPayment')?.value || '').toLowerCase();
+  return salesCache.filter(sale => {
+    const details = getSaleDetails(sale);
+    const haystack = [sale.id, sale.nombre, sale.telefono, sale.pedido_id, details.payment].join(' ').toLowerCase();
+    const date = String(sale.fecha || sale.fecha_iso || '').slice(0, 10);
+    if(currentEmployeeRole === 'ventas' && !isInCurrentWeek(sale.fecha || sale.fecha_iso)) return false;
+    return (!query || haystack.includes(query)) && (!from || date >= from) && (!to || date <= to)
+      && (!payment || details.payment.toLowerCase().includes(payment));
+  });
+}
+
+function renderFilteredSales(){
+  const tbody = document.getElementById('salesTableBody');
+  if(!tbody) return;
+  const sales = filterSales();
+  const amount = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  const average = sales.length ? amount / sales.length : 0;
+  document.getElementById('salesSummary').innerHTML = `
+    <article class="stat-card"><span class="stat-label">Ventas encontradas</span><span class="stat-value">${sales.length}</span></article>
+    <article class="stat-card"><span class="stat-label">Ingresos del filtro</span><span class="stat-value">S/ ${amount.toFixed(2)}</span></article>
+    <article class="stat-card"><span class="stat-label">Ticket promedio</span><span class="stat-value">S/ ${average.toFixed(2)}</span></article>`;
+  const scopeNote = document.getElementById('salesScopeNote');
+  if(scopeNote) scopeNote.textContent = currentEmployeeRole === 'ventas'
+    ? `Historial de esta semana (${formatWeekRange()}).`
+    : 'Historial completo. Usa los filtros para encontrar una venta.';
+  document.getElementById('salesResultCount').textContent = `${sales.length} ${sales.length === 1 ? 'venta encontrada' : 'ventas encontradas'}`;
+  if(!sales.length){
+    tbody.innerHTML = '<tr><td colspan="7" class="hint">No hay ventas que coincidan con estos filtros.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = sales.map(sale => {
+    const { items, payment } = getSaleDetails(sale);
+    const productNames = items.slice(0, 2).map(item => escapeHtml(item.nombre || item.name || 'Producto')).join(', ');
+    const extras = items.length > 2 ? ` +${items.length - 2}` : '';
+    return `<tr>
+      <td>${sale.fecha ? new Date(String(sale.fecha).replace(' ', 'T')).toLocaleString('es-PE', { dateStyle:'medium', timeStyle:'short' }) : '—'}</td>
+      <td><strong>${escapeHtml(sale.id)}</strong>${sale.pedido_id ? `<br><span class="hint">Pedido ${escapeHtml(sale.pedido_id)}</span>` : ''}</td>
+      <td>${escapeHtml(sale.nombre)}<br><span class="hint">${escapeHtml(sale.telefono || 'Sin teléfono')}</span></td>
+      <td>${productNames || 'Sin detalle'}${extras}</td>
+      <td><span class="pill pill-neutral">${escapeHtml(payment)}</span></td>
+      <td><strong>S/ ${Number(sale.total || 0).toFixed(2)}</strong></td>
+      <td><button type="button" class="btn btn-outline btn-small" data-sale-id="${escapeHtml(sale.id)}">Ver detalle</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function exportSalesPdf(){
+  const sales = filterSales();
+  if(!sales.length){ showToast('No hay ventas para exportar con estos filtros'); return; }
+  const reportWindow = window.open('', '_blank');
+  if(!reportWindow){
+    showToast('Permite las ventanas emergentes para generar el PDF');
+    return;
+  }
+  const total = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  const average = total / sales.length;
+  const from = document.getElementById('salesFrom').value;
+  const to = document.getElementById('salesTo').value;
+  const paymentFilter = document.getElementById('salesPayment');
+  const payment = paymentFilter.value ? paymentFilter.options[paymentFilter.selectedIndex].text : 'Todos';
+  const search = document.getElementById('salesSearch').value.trim();
+  const period = from || to ? `${from || 'Inicio'} — ${to || 'Hoy'}` : (currentEmployeeRole === 'ventas' ? `Semana ${formatWeekRange()}` : 'Todo el historial');
+  const rows = sales.map(sale => {
+    const details = getSaleDetails(sale);
+    const products = details.items.length ? details.items.map(item => {
+      const qty = Number(item.cantidad || item.qty || 1);
+      const price = Number(item.precio || item.price || 0);
+      const name = escapeHtml(item.nombre || item.name || 'Producto');
+      const customization = item.detalle ? ` <span class="muted">(${escapeHtml(item.detalle)})</span>` : '';
+      return `<div>${qty} × ${name}${customization} <span class="muted">— S/ ${(qty * price).toFixed(2)}</span></div>`;
+    }).join('') : '<span class="muted">Sin detalle de productos</span>';
+    const date = sale.fecha ? new Date(String(sale.fecha).replace(' ', 'T')).toLocaleString('es-PE', { dateStyle:'medium', timeStyle:'short' }) : '—';
+    return `<tr><td>${escapeHtml(date)}</td><td><strong>${escapeHtml(sale.id)}</strong>${sale.pedido_id ? `<br><span class="muted">Pedido ${escapeHtml(sale.pedido_id)}</span>` : ''}</td><td>${escapeHtml(sale.nombre)}<br><span class="muted">${escapeHtml(sale.telefono || 'Sin teléfono')}</span></td><td>${products}</td><td>${escapeHtml(details.payment)}</td><td class="money">S/ ${Number(sale.total || 0).toFixed(2)}</td></tr>`;
+  }).join('');
+  const title = `Reporte de ventas Punto Dulce ${new Date().toLocaleDateString('es-PE')}`;
+  reportWindow.document.open();
+  reportWindow.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>
+    *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#33241f;margin:32px;font-size:11px}header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #7d2948;padding-bottom:14px;margin-bottom:18px}h1{font-size:22px;margin:0 0 5px;color:#69223d}.brand{font-size:12px;color:#795e55}.meta{text-align:right;color:#6e5c55;line-height:1.6}.summary{display:flex;gap:12px;margin:16px 0 20px}.card{border:1px solid #e5d8d0;border-radius:8px;padding:10px 13px;min-width:145px}.card span{display:block;color:#7b6860;font-size:9px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}.card strong{font-size:16px;color:#69223d}.filters{padding:9px 11px;background:#faf5f1;border-radius:6px;margin-bottom:15px;color:#65514a}table{width:100%;border-collapse:collapse}thead{display:table-header-group}th{background:#f3e8e5;text-align:left;text-transform:uppercase;font-size:9px;letter-spacing:.04em;color:#6d4b50}th,td{padding:8px 7px;border-bottom:1px solid #eadfdb;vertical-align:top}tr{page-break-inside:avoid}.money{text-align:right;white-space:nowrap;font-weight:bold}.muted{color:#776b66;font-size:9px}footer{margin-top:20px;border-top:1px solid #eadfdb;padding-top:9px;color:#756760;font-size:9px}@page{size:landscape;margin:12mm}@media print{body{margin:0}button{display:none}}
+    </style></head><body><header><div><h1>Punto Dulce</h1><div class="brand">Reporte de ventas</div></div><div class="meta">Generado: ${escapeHtml(new Date().toLocaleString('es-PE'))}<br>Registros: ${sales.length}</div></header><div class="summary"><div class="card"><span>Ventas</span><strong>${sales.length}</strong></div><div class="card"><span>Ingresos</span><strong>S/ ${total.toFixed(2)}</strong></div><div class="card"><span>Ticket promedio</span><strong>S/ ${average.toFixed(2)}</strong></div></div><div class="filters"><strong>Filtros:</strong> Periodo: ${escapeHtml(period)} · Medio de pago: ${escapeHtml(payment)}${search ? ` · Búsqueda: ${escapeHtml(search)}` : ''}</div><table><thead><tr><th>Fecha</th><th>Código</th><th>Cliente</th><th>Productos</th><th>Pago</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table><footer>Documento generado desde el panel de Punto Dulce.</footer></body></html>`);
+  reportWindow.document.close();
+  reportWindow.focus();
+  window.setTimeout(() => reportWindow.print(), 300);
+  showToast('En la ventana de impresión, elige “Guardar como PDF”');
+}
+
+function showSaleDetails(id){
+  const sale = salesCache.find(item => String(item.id) === String(id));
+  if(!sale) return;
+  const { items, payment } = getSaleDetails(sale);
+  document.getElementById('saleDetailContent').innerHTML = `
+    <div class="sale-detail-meta">
+      <p><span>Código</span><strong>${escapeHtml(sale.id)}</strong></p>
+      <p><span>Cliente</span><strong>${escapeHtml(sale.nombre)}</strong></p>
+      <p><span>Teléfono</span><strong>${escapeHtml(sale.telefono || '—')}</strong></p>
+      <p><span>Fecha</span><strong>${sale.fecha ? new Date(String(sale.fecha).replace(' ','T')).toLocaleString('es-PE', { dateStyle:'medium', timeStyle:'short' }) : '—'}</strong></p>
+      <p><span>Pago</span><strong>${escapeHtml(payment)}</strong></p>
+      ${sale.pedido_id ? `<p><span>Pedido asociado</span><strong>${escapeHtml(sale.pedido_id)}</strong></p>` : ''}
+    </div>
+    <div class="sale-detail-items">${items.length ? items.map(item => `
+      <div class="sale-item-row"><div><strong>${escapeHtml(item.nombre || item.name || 'Producto')}</strong>
+        <span>${Number(item.cantidad || item.qty || 1)} × S/ ${Number(item.precio || item.price || 0).toFixed(2)}${item.detalle ? ` · ${escapeHtml(item.detalle)}` : ''}</span>
+      </div><strong>S/ ${(Number(item.cantidad || item.qty || 1) * Number(item.precio || item.price || 0)).toFixed(2)}</strong></div>`).join('') : '<p class="hint">Esta venta no tiene productos detallados.</p>'}</div>
+    <div class="sale-total-line"><span>Total pagado</span><strong>S/ ${Number(sale.total || 0).toFixed(2)}</strong></div>
+    <div class="panel-head-actions sale-detail-actions">
+      <button class="btn btn-outline btn-small" type="button" onclick="editSale('${escapeHtml(sale.id)}')">Actualizar venta</button>
+      <button class="btn btn-small btn-danger" type="button" onclick="deleteSale('${escapeHtml(sale.id)}')">Eliminar venta</button>
+    </div>`;
+  document.getElementById('saleDetailModal').classList.add('open');
+}
+
+async function renderSales(){
+  const tbody = document.getElementById('salesTableBody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" class="hint">Cargando ventas…</td></tr>';
+  try {
+    salesCache = await apiRequest('/ventas');
+    renderFilteredSales();
+  } catch(error) {
+    tbody.innerHTML = `<tr><td colspan="7" class="hint">${escapeHtml(error.message)}</td></tr>`;
+  }
+}
+
+function openSaleModal(){
+  editingSaleId = null;
+  manualSaleItems = [];
+  document.getElementById('saleForm').reset();
+  document.getElementById('saleOrderId').value = '';
+  document.querySelector('#saleModal h3').textContent = 'Registrar venta';
+  document.getElementById('btnSaveSale').textContent = 'Guardar venta';
+  document.getElementById('saleQuantity').value = 1;
+  const select = document.getElementById('saleProduct');
+  const products = productsCache.filter(product => product.disponible !== false);
+  select.innerHTML = products.length
+    ? products.map(product => `<option value="${escapeHtml(product.id)}">${escapeHtml(product.name)} · S/ ${Number(product.price).toFixed(2)}</option>`).join('')
+    : '<option value="">No hay productos disponibles</option>';
+  renderManualSaleItems();
+  document.getElementById('saleModal').classList.add('open');
+}
+
+function closeSaleModal(){ document.getElementById('saleModal').classList.remove('open'); editingSaleId = null; }
+
+function editSale(id){
+  const sale = salesCache.find(item => String(item.id) === String(id));
+  if(!sale) return;
+  const { items, payment } = getSaleDetails(sale);
+  document.getElementById('saleDetailModal').classList.remove('open');
+  openSaleModal();
+  editingSaleId = sale.id;
+  document.getElementById('saleCustomer').value = sale.nombre || '';
+  document.getElementById('salePhone').value = sale.telefono || '';
+  document.getElementById('saleOrderId').value = sale.pedido_id || '';
+  const methodSelect = document.getElementById('salePaymentMethod');
+  methodSelect.value = Array.from(methodSelect.options).some(option => option.value.toLowerCase() === payment.toLowerCase()) ? payment : 'Pendiente';
+  manualSaleItems = items.map(item => ({
+    id: item.id || null, nombre: item.nombre || item.name || 'Producto',
+    precio: Number(item.precio || item.price) || 0,
+    cantidad: Number(item.cantidad || item.qty) || 1,
+    detalle: item.detalle || ''
+  }));
+  renderManualSaleItems();
+  document.querySelector('#saleModal h3').textContent = 'Actualizar venta';
+  document.getElementById('btnSaveSale').textContent = 'Guardar cambios';
+}
+
+async function deleteSale(id){
+  if(!confirm('¿Eliminar esta venta? Esta acción no se puede deshacer.')) return;
+  try {
+    await apiRequest(`/ventas/${encodeURIComponent(id)}`, { method:'DELETE' });
+    document.getElementById('saleDetailModal').classList.remove('open');
+    await Promise.all([renderSales(), renderStats()]);
+    showToast('Venta eliminada');
+  } catch(error) { showToast(error.message || 'No se pudo eliminar la venta'); }
+}
+
+function addManualSaleItem(){
+  const id = document.getElementById('saleProduct').value;
+  const product = productsCache.find(item => String(item.id) === String(id));
+  const quantity = Number(document.getElementById('saleQuantity').value);
+  if(!product || product.disponible === false){ showToast('Elige un producto disponible'); return; }
+  if(!Number.isInteger(quantity) || quantity < 1 || quantity > 99){ showToast('La cantidad debe estar entre 1 y 99'); return; }
+  const existing = manualSaleItems.find(item => String(item.id) === String(product.id));
+  if(existing){
+    if(existing.cantidad + quantity > 99){ showToast('La cantidad máxima por producto es 99'); return; }
+    existing.cantidad += quantity;
+  } else {
+    manualSaleItems.push({ id: product.id, nombre: product.name, precio: Number(product.price), cantidad: quantity });
+  }
+  document.getElementById('saleQuantity').value = 1;
+  renderManualSaleItems();
+}
+
+function removeManualSaleItem(index){
+  manualSaleItems.splice(index, 1);
+  renderManualSaleItems();
+}
+
+function renderManualSaleItems(){
+  const container = document.getElementById('saleItemsContainer');
+  if(!container) return;
+  const total = manualSaleItems.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
+  document.getElementById('saleTotal').textContent = `S/ ${total.toFixed(2)}`;
+  container.innerHTML = manualSaleItems.length ? manualSaleItems.map((item, index) => `
+    <div class="sale-item-row">
+      <div><strong>${escapeHtml(item.nombre)}</strong><span>${item.cantidad} × S/ ${item.precio.toFixed(2)}</span></div>
+      <strong>S/ ${(item.cantidad * item.precio).toFixed(2)}</strong>
+      <button type="button" class="btn-icon-danger" aria-label="Quitar ${escapeHtml(item.nombre)}" onclick="removeManualSaleItem(${index})">✕</button>
+    </div>`).join('') : '<p class="hint">Agrega al menos un producto para continuar.</p>';
+}
+
+async function submitManualSale(event){
+  event.preventDefault();
+  if(!manualSaleItems.length){ showToast('Agrega al menos un producto'); return; }
+  const button = document.getElementById('btnSaveSale');
+  button.disabled = true;
+  button.textContent = 'Guardando…';
+  try {
+    const payload = {
+      nombre: document.getElementById('saleCustomer').value.trim(),
+      telefono: document.getElementById('salePhone').value.trim(),
+      metodoPago: document.getElementById('salePaymentMethod').value,
+      pedidoId: document.getElementById('saleOrderId').value || null,
+      items: manualSaleItems.map(item => ({ nombre:item.nombre, detalle:item.detalle || '', precio:item.precio, cantidad:item.cantidad }))
+    };
+    const wasEditing = !!editingSaleId;
+    await apiRequest(wasEditing ? `/ventas/${encodeURIComponent(editingSaleId)}` : '/ventas/registrar', {
+      method: wasEditing ? 'PUT' : 'POST', body:JSON.stringify(payload)
+    });
+    closeSaleModal();
+    await Promise.all([renderSales(), renderStats()]);
+    showToast(wasEditing ? 'Venta actualizada correctamente' : 'Venta registrada correctamente');
+  } catch(error) {
+    showToast(error.message || 'No se pudo registrar la venta');
+  } finally {
+    button.disabled = false;
+    button.textContent = editingSaleId ? 'Guardar cambios' : 'Guardar venta';
+  }
+}
+
+function bindPanelFilters(){
+  const bind = (ids, render) => ids.forEach(id => document.getElementById(id)?.addEventListener('input', render));
+  bind(['salesSearch','salesFrom','salesTo','salesPayment'], renderFilteredSales);
+  bind(['productsSearch','productsCategory','productsStatus'], renderFilteredProducts);
+  bind(['suppliesSearch','suppliesStatus'], renderFilteredSupplies);
+  bind(['purchasesSearch','purchasesFrom','purchasesTo'], renderFilteredPurchases);
+  bind(['ordersSearch','ordersStatus','ordersType'], renderFilteredEmployeeOrders);
+  const clear = (buttonId, inputIds, render) => document.getElementById(buttonId)?.addEventListener('click', () => {
+    inputIds.forEach(id => { const input = document.getElementById(id); if(input) input.value = ''; });
+    render();
+  });
+  clear('clearSalesFilters', ['salesSearch','salesFrom','salesTo','salesPayment'], renderFilteredSales);
+  clear('clearProductsFilters', ['productsSearch','productsCategory','productsStatus'], renderFilteredProducts);
+  clear('clearSuppliesFilters', ['suppliesSearch','suppliesStatus'], renderFilteredSupplies);
+  clear('clearPurchasesFilters', ['purchasesSearch','purchasesFrom','purchasesTo'], renderFilteredPurchases);
+  clear('clearOrdersFilters', ['ordersSearch','ordersStatus','ordersType'], renderFilteredEmployeeOrders);
+}
+
 /* ---- Gestión de productos ---- */
 async function renderAdminProducts(){
   const tbody = document.getElementById('productsTableBody');
@@ -1420,8 +1784,23 @@ async function renderAdminProducts(){
 
   tbody.innerHTML = '<tr><td colspan="6" class="hint" style="padding:16px 0;">Cargando productos...</td></tr>';
 
-  const products = await getProducts();
+  productsCache = await getProducts();
+  renderFilteredProducts();
+}
 
+function renderFilteredProducts(){
+  const tbody = document.getElementById('productsTableBody');
+  if(!tbody) return;
+  const query = (document.getElementById('productsSearch')?.value || '').trim().toLowerCase();
+  const category = document.getElementById('productsCategory')?.value || '';
+  const status = document.getElementById('productsStatus')?.value || '';
+  const products = productsCache.filter(product =>
+    (!query || `${product.name} ${product.desc || ''}`.toLowerCase().includes(query))
+    && (!category || product.cat === category)
+    && (!status || (status === 'available' ? product.disponible !== false : product.disponible === false))
+  );
+  document.getElementById('productsResultCount').textContent = `${products.length} de ${productsCache.length} productos`;
+  renderOperationalAlerts();
   if(products.length === 0){
     tbody.innerHTML = '<tr><td colspan="6" class="hint" style="padding:16px 0;">No hay productos registrados.</td></tr>';
     return;
@@ -1429,8 +1808,8 @@ async function renderAdminProducts(){
 
   tbody.innerHTML = products.map(p=>`
     <tr>
-      <td>${p.icon || '🍰'} ${p.name}</td>
-      <td>${labelForCat(p.cat)}</td>
+      <td>${p.icon || '🍰'} ${escapeHtml(p.name)}</td>
+      <td>${escapeHtml(labelForCat(p.cat))}</td>
       <td>${p.customizable ? 'Desde ' : ''}S/ ${Number(p.price).toFixed(2)}</td>
       <td><span class="pill ${p.disponible!==false ? 'pill-ok':'pill-off'}">${p.disponible!==false ? 'Disponible':'Oculto'}</span></td>
       <td>${p.customizable ? 'Sí' : 'No'}</td>
@@ -1691,12 +2070,25 @@ async function renderSupplies(){
   if(!tbody) return;
 
   await loadSupplies();
+  renderFilteredSupplies();
+}
 
-  const supplies = getSupplies();
+function renderFilteredSupplies(){
+  const tbody = document.getElementById('suppliesTableBody');
+  if(!tbody) return;
+  const query = (document.getElementById('suppliesSearch')?.value || '').trim().toLowerCase();
+  const status = document.getElementById('suppliesStatus')?.value || '';
+  const supplies = getSupplies().filter(s => {
+    const low = s.cantidad <= s.stockMinimo;
+    return (!query || `${s.nombre} ${s.proveedor}`.toLowerCase().includes(query))
+      && (!status || (status === 'low' ? low : !low));
+  });
+  document.getElementById('suppliesResultCount').textContent = `${supplies.length} de ${suppliesCache.length} insumos`;
+  renderOperationalAlerts();
 
   if(supplies.length === 0){
     tbody.innerHTML =
-      '<tr><td colspan="6" class="hint" style="padding:16px 0;">Aún no registras insumos de materia prima.</td></tr>';
+      `<tr><td colspan="6" class="hint" style="padding:16px 0;">${suppliesCache.length ? 'No hay insumos que coincidan con estos filtros.' : 'Aún no registras insumos de materia prima.'}</td></tr>`;
     return;
   }
 
@@ -1705,10 +2097,10 @@ async function renderSupplies(){
 
     return `
       <tr class="${bajo ? 'row-warning' : ''}">
-        <td>${s.nombre}</td>
+        <td>${escapeHtml(s.nombre)}</td>
         <td>${s.cantidad} ${s.unidad}</td>
         <td>${s.stockMinimo} ${s.unidad}</td>
-        <td>${s.proveedor || '—'}</td>
+        <td>${escapeHtml(s.proveedor || '—')}</td>
         <td>
           <span class="pill ${bajo ? 'pill-off' : 'pill-ok'}">
             ${bajo ? 'Stock bajo' : 'Normal'}
@@ -1738,6 +2130,7 @@ async function getPurchaseOrders(){
 
     return data.map(c => ({
       id: c.id,
+      detalleId: c.detalle_id,
       insumoId: c.insumo_id,
       insumo: c.insumo_nombre,
       cantidad: Number(c.cantidad),
@@ -1976,195 +2369,141 @@ async function submitPurchaseForm(e){
 async function renderPurchaseOrders(){
   const tbody = document.getElementById('purchaseOrdersBody');
   if(!tbody) return;
-  const soloSemana = soloSemanaParaRolActual();
-
   const scopeNote = document.getElementById('comprasScopeNote');
   if(scopeNote){
-    scopeNote.textContent = soloSemana
+    scopeNote.textContent = soloSemanaParaRolActual()
       ? `Mostrando compras de la semana en curso (${formatWeekRange()}).`
-      : 'Historial completo (vista de administrador).';
+      : 'Historial completo para revisar y actualizar compras.';
   }
+  purchaseOrdersCache = await getPurchaseOrders();
+  renderFilteredPurchases();
+}
 
-const allCompras = await getPurchaseOrders();
-  const compras = soloSemana ? allCompras.filter(c=>isInCurrentWeek(c.fechaISO)) : allCompras;
+function renderFilteredPurchases(){
+  const tbody = document.getElementById('purchaseOrdersBody');
+  if(!tbody) return;
+  const query = (document.getElementById('purchasesSearch')?.value || '').trim().toLowerCase();
+  const from = document.getElementById('purchasesFrom')?.value || '';
+  const to = document.getElementById('purchasesTo')?.value || '';
+  const compras = purchaseOrdersCache.filter(c => {
+    const date = String(c.fecha || '').slice(0,10);
+    const haystack = `${c.insumo} ${c.tienda} ${c.registradoPor}`.toLowerCase();
+    return (!soloSemanaParaRolActual() || isInCurrentWeek(c.fechaISO))
+      && (!query || haystack.includes(query)) && (!from || date >= from) && (!to || date <= to);
+  });
+  const count = document.getElementById('purchasesResultCount');
+  if(count) count.textContent = `${compras.length} líneas de compra encontradas`;
 
   if(compras.length===0){
-    tbody.innerHTML = `<tr><td colspan="6" class="hint" style="padding:16px 0;">${soloSemana ? 'No hay compras registradas esta semana.' : 'Aún no registras órdenes de compra.'}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="hint" style="padding:16px 0;">${purchaseOrdersCache.length ? 'No hay compras que coincidan con estos filtros.' : (soloSemanaParaRolActual() ? 'No hay compras registradas esta semana.' : 'Aún no registras órdenes de compra.')}</td></tr>`;
     return;
   }
   tbody.innerHTML = compras.map(c=>`
     <tr>
 <td>${new Date(c.fecha).toLocaleDateString('es-PE', { timeZone: 'UTC' })}</td>
-      <td>${c.insumo}</td>
+      <td>${escapeHtml(c.insumo)}</td>
       <td>${c.cantidad} ${c.unidad}</td>
       <td>S/ ${Number(c.costo).toFixed(2)}</td>
-      <td>${c.tienda || '—'}</td>
-      <td>${c.registradoPor}</td>
+      <td>${escapeHtml(c.tienda || '—')}</td>
+      <td>${escapeHtml(c.registradoPor)}</td>
+      <td class="table-actions">
+        <button class="btn btn-outline btn-small" onclick="openPurchaseEditModal(${Number(c.detalleId)})">Editar</button>
+        <button class="btn btn-small btn-danger" onclick="deletePurchaseItem(${Number(c.detalleId)})">Eliminar</button>
+      </td>
     </tr>
   `).join('');
 }
 
+function openPurchaseEditModal(detailId){
+  const item = purchaseOrdersCache.find(row => String(row.detalleId) === String(detailId));
+  if(!item) return;
+  editingPurchaseDetailId = Number(detailId);
+  document.getElementById('purchaseEditItemName').textContent = `${item.insumo} · ${item.unidad}`;
+  document.getElementById('purchaseEditQuantity').value = item.cantidad;
+  document.getElementById('purchaseEditCost').value = item.costo;
+  document.getElementById('purchaseEditStore').value = item.tienda;
+  document.getElementById('purchaseEditDate').value = String(item.fecha).slice(0,10);
+  document.getElementById('purchaseEditModal').classList.add('open');
+}
+
+function closePurchaseEditModal(){
+  document.getElementById('purchaseEditModal').classList.remove('open');
+  editingPurchaseDetailId = null;
+}
+
+async function submitPurchaseEditForm(event){
+  event.preventDefault();
+  if(!editingPurchaseDetailId) return;
+  const button = document.getElementById('purchaseEditSave');
+  button.disabled = true;
+  try {
+    const fecha = document.getElementById('purchaseEditDate').value;
+    await apiRequest(`/compras/${editingPurchaseDetailId}`, { method:'PUT', body:JSON.stringify({
+      cantidad:Number(document.getElementById('purchaseEditQuantity').value),
+      costo:Number(document.getElementById('purchaseEditCost').value),
+      tienda:document.getElementById('purchaseEditStore').value.trim(),
+      fecha, fechaISO:new Date(`${fecha}T12:00:00`).toISOString()
+    }) });
+    closePurchaseEditModal();
+    await Promise.all([renderPurchaseOrders(), renderSupplies()]);
+    showToast('Compra actualizada y stock ajustado');
+  } catch(error) { showToast(error.message || 'No se pudo actualizar la compra'); }
+  finally { button.disabled = false; }
+}
+
+async function deletePurchaseItem(detailId){
+  if(!confirm('Se descontará esta cantidad del stock actual. ¿Eliminar este artículo de compra?')) return;
+  try {
+    await apiRequest(`/compras/${detailId}`, { method:'DELETE' });
+    await Promise.all([renderPurchaseOrders(), renderSupplies()]);
+    showToast('Artículo eliminado y stock ajustado');
+  } catch(error) { showToast(error.message || 'No se pudo eliminar el artículo de compra'); }
+}
+
 /* ---- Gestión de pedidos (vista del personal) ---- */
 async function renderEmployeeOrders(){
-
-  const tbody =
-    document.getElementById('employeeOrdersBody');
-
+  const tbody = document.getElementById('employeeOrdersBody');
   if(!tbody) return;
-
-  const soloSemana =
-    soloSemanaParaRolActual();
-
-  const scopeNote =
-    document.getElementById('pedidosScopeNote');
-
-  if(scopeNote){
-
-    scopeNote.textContent =
-      soloSemana
-        ? `Mostrando pedidos de la semana en curso (${formatWeekRange()}).`
-        : 'Historial completo (vista de administrador).';
-
+  const note = document.getElementById('pedidosScopeNote');
+  if(note) note.textContent = soloSemanaParaRolActual()
+    ? `Mostrando pedidos de la semana en curso (${formatWeekRange()}).`
+    : 'Historial completo. Busca por cliente, código o estado.';
+  tbody.innerHTML = '<tr><td colspan="6" class="hint">Cargando pedidos…</td></tr>';
+  try {
+    employeeOrdersCache = await fetchAllEmployeeOrders();
+    renderFilteredEmployeeOrders();
+  } catch(error) {
+    tbody.innerHTML = `<tr><td colspan="6" class="hint">${escapeHtml(error.message || 'No se pudieron cargar los pedidos.')}</td></tr>`;
   }
+}
 
-  try{
-
- const respuesta =
-  await apiRequest('/pedidos');
-
-let orders =
-  Array.isArray(respuesta)
-    ? respuesta
-    : (respuesta.pedidos || []);
-    
-
-    if(soloSemana){
-
-      orders = orders.filter(o =>
-        isInCurrentWeek(
-          o.created_at ||
-          o.createdAtISO ||
-          o.createdAt
-        )
-      );
-
-    }
-
-    if(orders.length === 0){
-
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6"
-              class="hint"
-              style="padding:16px 0;">
-
-            ${
-              soloSemana
-                ? 'No hay pedidos esta semana.'
-                : 'No hay pedidos registrados todavía.'
-            }
-
-          </td>
-        </tr>
-      `;
-
-      return;
-    }
-
-    tbody.innerHTML =
-      orders.map(o => {
-
-        const estados = {
-          pendiente: 'Pendiente',
-          confirmado: 'Confirmado',
-          en_preparacion: 'En preparación',
-          listo: 'Listo',
-          en_camino: 'En camino',
-          entregado: 'Entregado',
-          cancelado: 'Cancelado'
-        };
-
-        const estadoTexto =
-          estados[o.estado] || o.estado;
-
-        return `
-          <tr>
-
-            <td>
-              ${o.codigo}
-            </td>
-
-            <td>
-              ${o.cliente_nombre}
-            </td>
-
-            <td>
-              ${
-                o.tipo === 'delivery'
-                  ? 'Delivery'
-                  : 'Por encargo'
-              }
-            </td>
-
-            <td>
-              S/ ${Number(o.total || 0).toFixed(2)}
-            </td>
-
-            <td>
-              <span class="pill ${
-                o.estado === 'entregado'
-                  ? 'pill-ok'
-                  : 'pill-off'
-              }">
-                ${estadoTexto}
-              </span>
-            </td>
-
-            <td class="table-actions">
-
-              ${
-                o.estado !== 'entregado' &&
-                o.estado !== 'cancelado'
-
-                  ? `
-                    <button
-                      class="btn btn-outline btn-small"
-                      onclick="advanceEmployeeOrder(${o.id}, '${o.estado}')">
-                      Avanzar estado
-                    </button>
-                  `
-
-                  : '—'
-              }
-
-            </td>
-
-          </tr>
-        `;
-
-      }).join('');
-
-  }catch(error){
-
-    console.error(
-      'Error al cargar pedidos:',
-      error
-    );
-
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6"
-            class="hint"
-            style="padding:16px 0;">
-
-          ${error.message ||
-            'No se pudieron cargar los pedidos.'}
-
-        </td>
-      </tr>
-    `;
-
+function renderFilteredEmployeeOrders(){
+  const tbody = document.getElementById('employeeOrdersBody');
+  if(!tbody) return;
+  const query = (document.getElementById('ordersSearch')?.value || '').trim().toLowerCase();
+  const status = document.getElementById('ordersStatus')?.value || '';
+  const type = document.getElementById('ordersType')?.value || '';
+  const orders = employeeOrdersCache.filter(order => {
+    const haystack = `${order.codigo} ${order.cliente_nombre} ${order.cliente_telefono}`.toLowerCase();
+    return (!soloSemanaParaRolActual() || isInCurrentWeek(order.created_at))
+      && (!query || haystack.includes(query)) && (!status || order.estado === status) && (!type || order.tipo === type);
+  });
+  document.getElementById('ordersResultCount').textContent = `${orders.length} de ${employeeOrdersCache.length} pedidos`;
+  renderOperationalAlerts();
+  if(!orders.length){
+    tbody.innerHTML = `<tr><td colspan="6" class="hint">${employeeOrdersCache.length ? 'No hay pedidos que coincidan con estos filtros.' : 'No hay pedidos registrados todavía.'}</td></tr>`;
+    return;
   }
+  const statuses = { pendiente:'Pendiente', confirmado:'Confirmado', en_preparacion:'En preparación', listo:'Listo', en_camino:'En camino', entregado:'Entregado', cancelado:'Cancelado' };
+  tbody.innerHTML = orders.map(order => `<tr>
+    <td><strong>${escapeHtml(order.codigo)}</strong></td>
+    <td>${escapeHtml(order.cliente_nombre)}<br><span class="hint">${escapeHtml(order.cliente_telefono || '')}</span></td>
+    <td>${order.tipo === 'delivery' ? 'Delivery' : 'Por encargo'}</td>
+    <td>S/ ${Number(order.total || 0).toFixed(2)}</td>
+    <td><span class="pill ${order.estado === 'entregado' ? 'pill-ok' : 'pill-off'}">${statuses[order.estado] || escapeHtml(order.estado)}</span></td>
+    <td class="table-actions">${!['entregado','cancelado'].includes(order.estado)
+      ? `<button class="btn btn-outline btn-small" onclick="advanceEmployeeOrder(${Number(order.id)}, '${escapeHtml(order.estado)}')">Avanzar estado</button>` : '—'}</td>
+  </tr>`).join('');
 }
 
 

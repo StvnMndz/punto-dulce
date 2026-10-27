@@ -157,18 +157,8 @@ ORDER BY fecha DESC;
 
 SELECT *FROM insumos;
 
-CREATE USER 'iJVPrLH5ZtVbQ3Z.equipo'
-IDENTIFIED BY 'PuntoDulce2026';
-
-GRANT SELECT, INSERT, UPDATE, DELETE
-ON punto_dulce.*
-TO 'iJVPrLH5ZtVbQ3Z.equipo';
-
-GRANT CREATE, ALTER, DROP
-ON punto_dulce.*
-TO 'iJVPrLH5ZtVbQ3Z.equipo';
-
-SELECT USER();
+-- Crea el usuario de la base de datos por separado y guarda sus
+-- credenciales solo en backend/.env (ver README.md).
 
 CREATE TABLE IF NOT EXISTS detalle_orden_compra (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -193,7 +183,8 @@ CREATE TABLE IF NOT EXISTS ventas (
     estado VARCHAR(30) NOT NULL DEFAULT 'Pendiente',
     detalle TEXT,
     fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    fecha_iso VARCHAR(50)
+    fecha_iso VARCHAR(50),
+    pedido_id VARCHAR(12) NULL
 );
 
 CREATE TABLE IF NOT EXISTS detalle_ventas (
