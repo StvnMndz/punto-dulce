@@ -8,6 +8,7 @@ const generarCodigo = () => `PD-${crypto.randomBytes(3).toString('hex').toUpperC
 exports.crear = async (req, res) => {
   try {
     const { nombre, telefono, tipo, direccion, fechaEntrega, notas, items } = req.body || {};
+    const anticipo = Number(req.body?.anticipo || 0);
     if (!nombre || !telefono) return res.status(400).json({ error: 'Nombre y teléfono son obligatorios.' });
     if (!TIPOS.includes(tipo)) return res.status(400).json({ error: 'Tipo de pedido inválido.' });
     if (tipo === 'delivery' && !direccion) return res.status(400).json({ error: 'La dirección es obligatoria para delivery.' });
@@ -17,9 +18,12 @@ exports.crear = async (req, res) => {
       precio: Math.max(0, Number(item.precio) || 0), cantidad: Math.min(99, Math.max(1, parseInt(item.cantidad, 10) || 1))
     }));
     if (cleanItems.some(item => !item.nombre)) return res.status(400).json({ error: 'Cada producto debe tener nombre.' });
+    const total = cleanItems.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
+    if (!Number.isFinite(anticipo) || anticipo < 0 || anticipo > total) return res.status(400).json({ error: 'El anticipo debe estar entre S/ 0 y el total del pedido.' });
+    if (tipo === 'encargo' && anticipo <= 0) return res.status(400).json({ error: 'Registra un anticipo mayor a cero para los pedidos por encargo.' });
     const pedido = { nombre: String(nombre).slice(0, 120), telefono: String(telefono).slice(0, 30), tipo,
       direccion, fechaEntrega, notas, items: cleanItems,
-      total: cleanItems.reduce((sum, item) => sum + item.precio * item.cantidad, 0) };
+      total, anticipo };
     for (let attempt = 0; attempt < 5; attempt++) {
       pedido.codigo = generarCodigo();
       try {

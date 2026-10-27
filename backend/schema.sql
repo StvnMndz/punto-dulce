@@ -213,6 +213,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
   notas            TEXT NULL,
   items            JSON NOT NULL,
   total            DECIMAL(10,2) NOT NULL DEFAULT 0,
+  anticipo         DECIMAL(10,2) NULL DEFAULT NULL,
   estado           ENUM('pendiente','confirmado','en_preparacion','listo','en_camino','entregado','cancelado')
                    NOT NULL DEFAULT 'pendiente',
   created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

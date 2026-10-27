@@ -3,10 +3,10 @@ const pool = require('../db');
 module.exports = {
   async create(pedido) {
     await pool.query(
-      `INSERT INTO pedidos (codigo, cliente_nombre, cliente_telefono, tipo, direccion, fecha_entrega, notas, items, total)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO pedidos (codigo, cliente_nombre, cliente_telefono, tipo, direccion, fecha_entrega, notas, items, total, anticipo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [pedido.codigo, pedido.nombre, pedido.telefono, pedido.tipo, pedido.direccion || null,
-        pedido.fechaEntrega || null, pedido.notas || null, JSON.stringify(pedido.items), pedido.total]
+        pedido.fechaEntrega || null, pedido.notas || null, JSON.stringify(pedido.items), pedido.total, pedido.anticipo ?? null]
     );
   },
   async findForTracking(codigo, telefono) {

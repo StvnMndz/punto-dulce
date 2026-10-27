@@ -118,6 +118,6 @@ El flujo de una petición es `Ruta → Controlador → DAO → MySQL`; la respue
 
 Para conectar el backend, copia `backend/.env.example` a `backend/.env` y configura `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` y `DB_SSL` según tu servidor. El archivo `.env` no debe compartirse ni subirse al repositorio.
 
-Si la tabla `ventas` ya existía antes de esta versión, agrega la columna usada para relacionar una venta con su pedido con `ALTER TABLE ventas ADD COLUMN pedido_id VARCHAR(12) NULL;`.
+Si las tablas ya existían antes de esta versión, ejecuta `backend/migrate-anticipo.sql` para agregar el anticipo sin duplicar la columna. Los anticipos antiguos quedan como desconocidos y no se cuentan como cero. Para la relación de ventas, verifica primero con `SHOW COLUMNS FROM ventas LIKE 'pedido_id';` y ejecuta `ALTER TABLE ventas ADD COLUMN pedido_id VARCHAR(12) NULL;` solo si no aparece.
 
 El panel de ventas permite registrar, buscar, actualizar y eliminar ventas; se puede filtrar por fecha y forma de pago, abrir el detalle de cada operación y exportar el resultado filtrado como PDF desde la ventana de impresión. Almacén permite administrar productos e insumos, gestionar compras con ajuste de stock, filtrar por fecha, artículo, tienda o responsable y recibir alertas al alcanzar el stock mínimo o agotarse. El panel también alerta sobre pedidos pendientes por más de 24 horas y entregas próximas. Pedidos tiene filtros de búsqueda, estado y tipo; el diseño se adapta a pantallas móviles.

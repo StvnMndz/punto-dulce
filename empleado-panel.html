@@ -81,10 +81,43 @@
 
     <!-- ================= RESUMEN / ESTADÍSTICAS ================= -->
     <div class="panel-section show" id="panel-resumen">
+      <div class="dashboard-welcome">
+        <div class="dashboard-welcome-copy">
+          <span class="dashboard-eyebrow">PUNTO DULCE · PANEL COMERCIAL</span>
+          <h2 id="dashboardGreeting">Resumen de actividad</h2>
+          <p id="dashboardWelcomeText">Consulta el movimiento de ventas y pedidos de tu equipo.</p>
+        </div>
+        <div class="dashboard-welcome-actions">
+          <span class="dashboard-period" id="dashboardPeriod">Actualizado hoy</span>
+          <button class="btn btn-yellow btn-small" type="button" data-dashboard-panel="ventas">Ver ventas <span aria-hidden="true">→</span></button>
+        </div>
+      </div>
+      <div class="admin-analytics" id="adminAnalytics" hidden>
+        <div class="admin-analytics-toolbar">
+          <label><span>Período</span><select id="adminPeriodFilter"><option value="all">Todo el historial</option><option value="7">Últimos 7 días</option><option value="month">Este mes</option><option value="custom">Rango personalizado</option></select></label>
+          <label class="admin-custom-date" id="adminFromWrap" hidden><span>Desde</span><input id="adminFrom" type="date"></label>
+          <label class="admin-custom-date" id="adminToWrap" hidden><span>Hasta</span><input id="adminTo" type="date"></label>
+          <div class="admin-analytics-actions"><button class="btn btn-outline btn-small" type="button" id="btnRefreshAdminDashboard">↻ Actualizar</button><button class="btn btn-primary btn-small" type="button" id="btnExportAdminDashboard">▤ Exportar resumen a PDF</button></div>
+        </div>
+        <div class="stats-grid admin-kpi-grid" id="adminDashboardKpis"></div>
+        <div class="admin-dashboard-grid">
+          <article class="stats-block admin-dashboard-card admin-chart-card"><h3>Ventas de los últimos 7 días</h3><div id="adminSalesTrend" class="admin-sales-trend"></div></article>
+          <article class="stats-block admin-dashboard-card"><h3>Pedidos por estado</h3><div id="adminOrderStates" class="admin-order-states"></div></article>
+          <article class="stats-block admin-dashboard-card"><h3>Ventas por tipo de pedido</h3><div id="adminSalesByType"></div></article>
+          <article class="stats-block admin-dashboard-card"><h3>Productos más solicitados</h3><div id="adminTopProducts"></div></article>
+          <article class="stats-block admin-dashboard-card"><h3>Ventas por categoría</h3><div id="adminSalesByCategory"></div></article>
+          <article class="stats-block admin-dashboard-card"><h3>Método de pago en delivery</h3><div id="adminPaymentMethods"></div></article>
+          <article class="stats-block admin-dashboard-card"><h3>Mejores clientes</h3><div id="adminTopCustomers"></div></article>
+          <article class="stats-block admin-dashboard-card"><h3>Alertas de inventario</h3><div id="adminInventoryAlerts"></div></article>
+          <article class="stats-block admin-dashboard-card"><h3>Estado del catálogo</h3><div id="adminCatalogStatus"></div></article>
+          <article class="stats-block admin-dashboard-card admin-recent-card"><h3>Últimos pedidos</h3><div id="adminRecentOrders"></div></article>
+        </div>
+      </div>
+      <div id="standardSummary">
       <div class="panel-section-head">
         <div>
-          <h2>Estadísticas de ventas</h2>
-          <p>Datos calculados a partir de los pedidos registrados en el sistema.</p>
+          <h2>Resumen de ventas y pedidos</h2>
+          <p>Indicadores del período seleccionado, actualizados con los registros del sistema.</p>
           <p class="hint" id="statsScopeNote" style="margin-top:4px;"></p>
         </div>
       </div>
@@ -98,6 +131,7 @@
           <h3>Productos más solicitados</h3>
           <div id="statsTopProducts"></div>
         </div>
+      </div>
       </div>
     </div>
 

@@ -149,6 +149,7 @@ let productsCache = [];
 let salesCache = [];
 let purchaseOrdersCache = [];
 let employeeOrdersCache = [];
+let currentAdminDashboardReport = null;
 
 async function fetchAllEmployeeOrders(){
   const first = await apiRequest('/pedidos?page=1&limit=100');
@@ -598,6 +599,11 @@ async function submitOrder(){
       showToast('Registra el anticipo para confirmar tu pedido');
       return;
     }
+    const totalPedido = cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1), 0);
+    if(Number(anticipo) > totalPedido){
+      showToast('El anticipo no puede ser mayor al total del pedido');
+      return;
+    }
 
     detail = {
       fechaEntrega: fecha,
@@ -640,6 +646,8 @@ async function submitOrder(){
           detail.fechaEntrega || null,
 
         notas: notasBase,
+
+        anticipo: orderType === 'encargo' ? Number(detail.anticipo || 0) : 0,
 
         items
 
@@ -1104,23 +1112,61 @@ async function initEmployeePanel(){
   document.getElementById('empNombre').textContent = empleado.nombre;
   document.getElementById('empCargo').textContent = ROLE_LABELS[empleado.rol] || empleado.rol;
 
+  const dashboardGreeting = document.getElementById('dashboardGreeting');
+  const dashboardWelcomeText = document.getElementById('dashboardWelcomeText');
+  const dashboardPeriod = document.getElementById('dashboardPeriod');
+  const dashboardSalesButton = document.querySelector('[data-dashboard-panel="ventas"]');
+  if(dashboardGreeting) dashboardGreeting.textContent = `Hola, ${empleado.nombre.split(' ')[0]}`;
+  if(dashboardWelcomeText) dashboardWelcomeText.textContent = empleado.rol === 'ventas'
+    ? 'Este es tu resumen de atención y ventas. Los indicadores corresponden a la semana actual.'
+    : 'Consulta el movimiento de ventas y pedidos registrados en Punto Dulce.';
+  if(dashboardPeriod) dashboardPeriod.textContent = empleado.rol === 'ventas'
+    ? `Semana ${formatWeekRange()}`
+    : `Actualizado ${new Date().toLocaleDateString('es-PE', { day:'numeric', month:'short', year:'numeric' })}`;
+  if(dashboardSalesButton && !ROLE_TABS[empleado.rol]?.includes('ventas')) dashboardSalesButton.hidden = true;
+
   const tienePermisos = applyRolePermissions(empleado.rol);
 
   initPanelTabs();
+  document.querySelector('[data-dashboard-panel]')?.addEventListener('click', event => {
+    const panel = event.currentTarget.dataset.dashboardPanel;
+    document.querySelector(`.panel-tab[data-panel="${panel}"]`)?.click();
+  });
   if(['administrador','ventas'].includes(empleado.rol)){
-    renderStats();
-    renderSales();
-    renderEmployeeOrders();
-    productsCache = await getProducts();
+    if(empleado.rol === 'administrador'){
+      document.getElementById('adminAnalytics').hidden = false;
+      document.getElementById('standardSummary').hidden = true;
+      await Promise.all([renderSales(), renderEmployeeOrders()]);
+      productsCache = await getProducts();
+    }else{
+      document.getElementById('adminAnalytics').hidden = true;
+      document.getElementById('standardSummary').hidden = false;
+      renderStats();
+      renderSales();
+      renderEmployeeOrders();
+      productsCache = await getProducts();
+    }
   }
   if(['administrador','produccion'].includes(empleado.rol)){
-    renderAdminProducts();
-    renderSupplies();
+    await renderAdminProducts();
+    await renderSupplies();
     renderPurchaseOrders();
   }
   if(empleado.rol === 'administrador'){
     renderPersonalList();
+    renderAdminDashboard();
   }
+
+  const periodFilter = document.getElementById('adminPeriodFilter');
+  periodFilter?.addEventListener('change', () => {
+    const custom = periodFilter.value === 'custom';
+    document.getElementById('adminFromWrap').hidden = !custom;
+    document.getElementById('adminToWrap').hidden = !custom;
+    renderAdminDashboard();
+  });
+  ['adminFrom','adminTo'].forEach(id=>document.getElementById(id)?.addEventListener('change', renderAdminDashboard));
+  document.getElementById('btnRefreshAdminDashboard')?.addEventListener('click', refreshAdminDashboard);
+  document.getElementById('btnExportAdminDashboard')?.addEventListener('click', exportAdminDashboardPdf);
 
   document.getElementById('btnNuevoProducto').addEventListener('click', ()=> openProductModal());
   document.getElementById('productForm').addEventListener('submit', submitProductForm);
@@ -1338,6 +1384,7 @@ let sales =
 
   return {
     totalPedidos,
+    totalVentas: sales.length,
     ventasTotales,
     pendientes,
     entregados,
@@ -1348,6 +1395,11 @@ let sales =
 
 
 async function renderStats(){
+
+  if(currentEmployeeRole === 'administrador'){
+    await refreshAdminDashboard();
+    return;
+  }
 
   const wrap =
     document.getElementById('statsCards');
@@ -1373,40 +1425,32 @@ async function renderStats(){
   }
 
   wrap.innerHTML = `
-    <div class="stat-card">
-      <span class="stat-label">
-        Pedidos totales
-      </span>
-      <span class="stat-value">
-        ${s.totalPedidos}
-      </span>
+    <div class="stat-card dashboard-stat">
+      <span class="dashboard-stat-icon" aria-hidden="true">📦</span>
+      <span class="stat-label">Pedidos recibidos</span>
+      <span class="stat-value">${s.totalPedidos}</span>
+      <span class="dashboard-stat-note">En el período mostrado</span>
     </div>
 
-    <div class="stat-card">
-      <span class="stat-label">
-        Ventas totales
-      </span>
-      <span class="stat-value">
-        S/ ${s.ventasTotales.toFixed(2)}
-      </span>
+    <div class="stat-card dashboard-stat dashboard-stat-primary">
+      <span class="dashboard-stat-icon" aria-hidden="true">💳</span>
+      <span class="stat-label">Ingresos por ventas</span>
+      <span class="stat-value">S/ ${s.ventasTotales.toFixed(2)}</span>
+      <span class="dashboard-stat-note">${s.totalVentas} ${s.totalVentas === 1 ? 'venta registrada' : 'ventas registradas'}</span>
     </div>
 
-    <div class="stat-card">
-      <span class="stat-label">
-        Pedidos pendientes
-      </span>
-      <span class="stat-value">
-        ${s.pendientes}
-      </span>
+    <div class="stat-card dashboard-stat">
+      <span class="dashboard-stat-icon" aria-hidden="true">⏳</span>
+      <span class="stat-label">Por atender</span>
+      <span class="stat-value">${s.pendientes}</span>
+      <span class="dashboard-stat-note">Pedidos pendientes o en preparación</span>
     </div>
 
-    <div class="stat-card">
-      <span class="stat-label">
-        Pedidos entregados
-      </span>
-      <span class="stat-value">
-        ${s.entregados}
-      </span>
+    <div class="stat-card dashboard-stat">
+      <span class="dashboard-stat-icon" aria-hidden="true">✓</span>
+      <span class="stat-label">Pedidos entregados</span>
+      <span class="stat-value">${s.entregados}</span>
+      <span class="dashboard-stat-note">Completados en el período</span>
     </div>
   `;
 
@@ -1506,6 +1550,209 @@ async function renderStats(){
   }
 
 }
+
+function adminDateKey(value){
+  if(!value) return '';
+  const raw = String(value).slice(0, 10);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function adminDateLabel(key, options = { day:'2-digit', month:'2-digit' }){
+  if(!key) return '—';
+  return new Date(`${key}T12:00:00`).toLocaleDateString('es-PE', options);
+}
+
+function getAdminDashboardRange(){
+  const mode = document.getElementById('adminPeriodFilter')?.value || 'all';
+  if(mode === 'custom') return {
+    from: document.getElementById('adminFrom')?.value || '',
+    to: document.getElementById('adminTo')?.value || '',
+    label: `${document.getElementById('adminFrom')?.value || 'Inicio'} — ${document.getElementById('adminTo')?.value || 'Hoy'}`
+  };
+  if(mode === 'month'){
+    const now = new Date();
+    return { from:`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`, to:adminDateKey(now), label:'Este mes' };
+  }
+  if(mode === '7'){
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate()-6);
+    return { from:adminDateKey(from), to:adminDateKey(to), label:'Últimos 7 días' };
+  }
+  return { from:'', to:'', label:'Todo el historial' };
+}
+
+function adminInRange(value, range){
+  const key = adminDateKey(value);
+  return !!key && (!range.from || key >= range.from) && (!range.to || key <= range.to);
+}
+
+function adminItems(order){
+  let items = order.items;
+  if(typeof items === 'string'){
+    try { items = JSON.parse(items); } catch { items = []; }
+  }
+  return Array.isArray(items) ? items : [];
+}
+
+function renderAdminBars(elementId, entries, formatter = value => String(value)){
+  const wrap = document.getElementById(elementId);
+  if(!wrap) return;
+  const valid = entries.filter(([, value]) => Number(value) > 0);
+  if(!valid.length){ wrap.innerHTML = '<p class="admin-empty">Sin datos para este período.</p>'; return; }
+  const max = Math.max(...valid.map(([, value]) => Number(value)), 1);
+  wrap.innerHTML = valid.map(([label, value]) => `<div class="admin-bar-row"><span class="admin-bar-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span><span class="admin-bar-track"><span class="admin-bar-fill" style="width:${Math.max(3, Number(value)/max*100)}%"></span></span><strong class="admin-bar-value">${escapeHtml(formatter(value))}</strong></div>`).join('');
+}
+
+function renderAdminDashboard(){
+  const root = document.getElementById('adminAnalytics');
+  if(!root || currentEmployeeRole !== 'administrador') return;
+  const range = getAdminDashboardRange();
+  const inRangeOrders = employeeOrdersCache.filter(order => adminInRange(order.created_at, range));
+  const inRangeSales = salesCache.filter(sale => adminInRange(sale.fecha || sale.fecha_iso, range));
+  const orders = inRangeOrders;
+  const activeOrders = orders.filter(order => order.estado !== 'cancelado');
+  const revenue = activeOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const delivered = orders.filter(order => order.estado === 'entregado').length;
+  const pending = orders.filter(order => !['entregado','cancelado'].includes(order.estado)).length;
+  const customerMap = new Map();
+  activeOrders.forEach(order => {
+    const name = String(order.cliente_nombre || 'Cliente').trim();
+    const phone = String(order.cliente_telefono || '').trim();
+    const key = phone || name.toLocaleLowerCase('es');
+    const customer = customerMap.get(key) || { nombre:name, telefono:phone, pedidos:0, gasto:0 };
+    customer.pedidos++;
+    customer.gasto += Number(order.total || 0);
+    customerMap.set(key, customer);
+  });
+  const deposits = activeOrders.reduce((sum, order) => sum + (order.anticipo === null || order.anticipo === undefined ? 0 : Math.max(0, Number(order.anticipo) || 0)), 0);
+  const outstanding = activeOrders.filter(order => order.tipo === 'encargo' && order.anticipo !== null && order.anticipo !== undefined && !['entregado','cancelado'].includes(order.estado))
+    .reduce((sum, order) => sum + Math.max(0, Number(order.total || 0)-Number(order.anticipo || 0)), 0);
+  const completedDenominator = activeOrders.length;
+  const avgTicket = completedDenominator ? revenue/completedDenominator : 0;
+  const fulfillment = completedDenominator ? Math.round(delivered/completedDenominator*100) : 0;
+  const kpis = document.getElementById('adminDashboardKpis');
+  if(kpis) kpis.innerHTML = `
+    <article class="stat-card dashboard-stat"><span class="dashboard-stat-icon" aria-hidden="true">📦</span><span class="stat-label">Pedidos totales</span><span class="stat-value">${orders.length}</span><span class="dashboard-stat-note">${range.label}</span></article>
+    <article class="stat-card dashboard-stat dashboard-stat-primary"><span class="dashboard-stat-icon" aria-hidden="true">💳</span><span class="stat-label">Ventas totales</span><span class="stat-value">S/ ${revenue.toFixed(2)}</span><span class="dashboard-stat-note">Pedidos no cancelados</span></article>
+    <article class="stat-card dashboard-stat"><span class="dashboard-stat-icon" aria-hidden="true">🧾</span><span class="stat-label">Ticket promedio</span><span class="stat-value">S/ ${avgTicket.toFixed(2)}</span><span class="dashboard-stat-note">Por pedido activo</span></article>
+    <article class="stat-card dashboard-stat"><span class="dashboard-stat-icon" aria-hidden="true">🚚</span><span class="stat-label">Tasa de entrega</span><span class="stat-value">${fulfillment}%</span><span class="dashboard-stat-note">${delivered} pedidos entregados</span></article>
+    <article class="stat-card dashboard-stat"><span class="dashboard-stat-icon" aria-hidden="true">⏳</span><span class="stat-label">Pedidos pendientes</span><span class="stat-value">${pending}</span><span class="dashboard-stat-note">Por atender o completar</span></article>
+    <article class="stat-card dashboard-stat"><span class="dashboard-stat-icon" aria-hidden="true">👥</span><span class="stat-label">Clientes</span><span class="stat-value">${customerMap.size}</span><span class="dashboard-stat-note">${[...customerMap.values()].filter(customer => customer.pedidos > 1).length} recurrentes</span></article>
+    <article class="stat-card dashboard-stat"><span class="dashboard-stat-icon" aria-hidden="true">💰</span><span class="stat-label">Anticipos recibidos</span><span class="stat-value">S/ ${deposits.toFixed(2)}</span><span class="dashboard-stat-note">Pedidos antiguos sin dato se omiten</span></article>
+    <article class="stat-card dashboard-stat"><span class="dashboard-stat-icon" aria-hidden="true">🧮</span><span class="stat-label">Saldo por cobrar</span><span class="stat-value">S/ ${outstanding.toFixed(2)}</span><span class="dashboard-stat-note">Encargos con anticipo registrado y pendientes</span></article>`;
+
+  const byType = { delivery:0, encargo:0 };
+  const statusLabels = { pendiente:'Pendiente', confirmado:'Confirmado', en_preparacion:'En preparación', listo:'Listo', en_camino:'En camino', entregado:'Entregado', cancelado:'Cancelado' };
+  const statusCounts = Object.fromEntries(Object.keys(statusLabels).map(key => [key,0]));
+  const productCounts = new Map();
+  const categorySales = new Map();
+  const soldNames = new Set();
+  activeOrders.forEach(order => {
+    byType[order.tipo === 'encargo' ? 'encargo' : 'delivery'] += Number(order.total || 0);
+    if(statusCounts[order.estado] !== undefined) statusCounts[order.estado]++;
+    adminItems(order).forEach(item => {
+      const name = String(item.nombre || item.name || 'Producto');
+      const quantity = Number(item.cantidad || item.qty || 1);
+      const price = Number(item.precio || item.price || 0);
+      productCounts.set(name, (productCounts.get(name) || 0)+quantity);
+      soldNames.add(name.toLocaleLowerCase('es'));
+      const product = productsCache.find(row => String(row.id) === String(item.id || item.producto_id) || row.name?.toLocaleLowerCase('es') === name.toLocaleLowerCase('es'));
+      const category = product?.cat || 'otros';
+      const categoryName = CATEGORY_LABELS[category] || (category === 'otros' ? 'Otros' : category);
+      categorySales.set(categoryName, (categorySales.get(categoryName) || 0)+quantity*price);
+    });
+  });
+  const topProducts = [...productCounts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
+  renderAdminBars('adminSalesByType', Object.entries(byType), value => `S/ ${Number(value).toFixed(2)}`);
+  renderAdminBars('adminTopProducts', topProducts, value => `${value} uds.`);
+  renderAdminBars('adminSalesByCategory', [...categorySales.entries()].sort((a,b)=>b[1]-a[1]), value => `S/ ${Number(value).toFixed(2)}`);
+
+  const orderStates = document.getElementById('adminOrderStates');
+  if(orderStates){
+    const colors = ['#d6a646','#d98da2','#9a6b9b','#722b49','#64748b','#438a6a','#c75e51'];
+    const stateEntries = Object.entries(statusCounts);
+    let cursor = 0;
+    const gradientParts = stateEntries.map(([key,count], index) => {
+      const start = cursor; cursor += orders.length ? count/orders.length*100 : 0;
+      return `${colors[index]} ${start}% ${cursor}%`;
+    });
+    orderStates.innerHTML = orders.length ? `<div class="admin-status-layout"><div class="admin-status-ring" style="background:conic-gradient(${gradientParts.join(',')})"><span><strong>${orders.length}</strong><small>pedidos</small></span></div><div class="admin-status-legend">${stateEntries.filter(([,count])=>count>0).map(([key,count])=>`<div><i style="background:${colors[stateEntries.findIndex(([status])=>status===key)]}"></i><span>${statusLabels[key]}</span><strong>${count}</strong></div>`).join('')}</div></div>` : '<p class="admin-empty">Sin pedidos para este período.</p>';
+  }
+
+  const today = new Date();
+  const trend = [];
+  for(let offset=6;offset>=0;offset--){
+    const date = new Date(today); date.setDate(today.getDate()-offset);
+    const key = adminDateKey(date);
+    const amount = employeeOrdersCache.filter(order => adminDateKey(order.created_at) === key && order.estado !== 'cancelado').reduce((sum,order)=>sum+Number(order.total||0),0);
+    trend.push({key, amount});
+  }
+  const trendMax = Math.max(...trend.map(day=>day.amount), 1);
+  const trendWrap = document.getElementById('adminSalesTrend');
+  if(trendWrap) trendWrap.innerHTML = `<div class="admin-trend-bars">${trend.map(day=>`<div class="admin-trend-column"><strong>S/ ${day.amount.toFixed(0)}</strong><span class="admin-trend-bar" style="height:${Math.max(day.amount ? 8 : 2, day.amount/trendMax*100)}%"></span><small>${adminDateLabel(day.key)}</small></div>`).join('')}</div>`;
+
+  const orderByCode = new Map(orders.map(order => [String(order.codigo), order]));
+  const payments = new Map();
+  inRangeSales.forEach(sale => {
+    const order = orderByCode.get(String(sale.pedido_id || ''));
+    if(!order || order.tipo !== 'delivery') return;
+    const { payment } = getSaleDetails(sale);
+    const label = payment || 'Pendiente';
+    payments.set(label, (payments.get(label) || 0)+1);
+  });
+  renderAdminBars('adminPaymentMethods', [...payments.entries()].sort((a,b)=>b[1]-a[1]), value => `${value} ped.`);
+
+  const customers = [...customerMap.values()].sort((a,b)=>b.gasto-a.gasto).slice(0,5);
+  const customerWrap = document.getElementById('adminTopCustomers');
+  if(customerWrap) customerWrap.innerHTML = customers.length ? `<div class="admin-mini-table"><div class="admin-mini-head"><span>Cliente</span><span>Pedidos</span><span>Gasto</span></div>${customers.map(customer=>`<div class="admin-mini-row"><span><strong>${escapeHtml(customer.nombre)}</strong>${customer.telefono ? `<small>${escapeHtml(customer.telefono)}</small>` : ''}</span><span>${customer.pedidos}</span><strong>S/ ${customer.gasto.toFixed(2)}</strong></div>`).join('')}</div>` : '<p class="admin-empty">Aún no hay clientes en este período.</p>';
+
+  const lowStock = suppliesCache.filter(item => item.cantidad <= item.stockMinimo);
+  const inventoryWrap = document.getElementById('adminInventoryAlerts');
+  if(inventoryWrap) inventoryWrap.innerHTML = suppliesCache.length ? `<p class="admin-card-subtitle">${suppliesCache.length} insumos registrados · ${lowStock.length} con stock bajo</p>${lowStock.length ? lowStock.slice(0,5).map(item=>`<div class="admin-inventory-row"><span>${escapeHtml(item.nombre)}</span><strong class="${item.cantidad <= 0 ? 'inventory-empty' : ''}">${item.cantidad} ${escapeHtml(item.unidad)} <small>(mín. ${item.stockMinimo})</small></strong></div>`).join('') : '<p class="admin-empty">Todos los insumos están sobre su mínimo.</p>'}` : '<p class="admin-empty">No hay insumos registrados.</p>';
+
+  const catalogWrap = document.getElementById('adminCatalogStatus');
+  if(catalogWrap){
+    const available = productsCache.filter(product=>product.disponible !== false).length;
+    const notSold = productsCache.filter(product=>!soldNames.has(String(product.name).toLocaleLowerCase('es'))).length;
+    catalogWrap.innerHTML = `<div class="admin-catalog-row"><span>Productos en catálogo</span><strong>${productsCache.length}</strong></div><div class="admin-catalog-row"><span>Disponibles</span><strong>${available}</strong></div><div class="admin-catalog-row"><span>Sin ventas en el período</span><strong>${notSold}</strong></div>`;
+  }
+
+  const recentWrap = document.getElementById('adminRecentOrders');
+  if(recentWrap){
+    const recent = [...orders].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,5);
+    recentWrap.innerHTML = recent.length ? `<div class="admin-recent-list">${recent.map(order=>`<div class="admin-recent-row"><div><strong>${escapeHtml(order.codigo)}</strong><small>${escapeHtml(order.cliente_nombre)} · ${order.tipo === 'encargo' ? 'Encargo' : 'Delivery'}</small></div><span class="pill ${order.estado === 'entregado' ? 'pill-ok' : 'pill-neutral'}">${statusLabels[order.estado] || escapeHtml(order.estado)}</span><strong>S/ ${Number(order.total||0).toFixed(2)}</strong></div>`).join('')}</div>` : '<p class="admin-empty">No hay pedidos recientes en este período.</p>';
+  }
+  currentAdminDashboardReport = { range:range.label, orders, activeOrders, revenue, avgTicket, fulfillment, pending, customers:[...customerMap.values()], deposits, outstanding, byType, topProducts, statusCounts, categorySales, payments, lowStock };
+}
+
+async function refreshAdminDashboard(){
+  const button = document.getElementById('btnRefreshAdminDashboard');
+  if(button){ button.disabled = true; button.textContent = 'Cargando…'; }
+  try{
+    const [orders, sales] = await Promise.all([fetchAllEmployeeOrders(), apiRequest('/ventas')]);
+    employeeOrdersCache = orders;
+    salesCache = Array.isArray(sales) ? sales : [];
+    productsCache = await getProducts();
+    await loadSupplies();
+    renderAdminDashboard();
+    renderOperationalAlerts();
+  }catch(error){ showToast(error.message || 'No se pudo actualizar el resumen'); }
+  finally{ if(button){ button.disabled = false; button.textContent = '↻ Actualizar'; } }
+}
+
+function exportAdminDashboardPdf(){
+  const report = currentAdminDashboardReport;
+  if(!report){ showToast('Espera a que cargue el resumen'); return; }
+  const popup = window.open('', '_blank');
+  if(!popup){ showToast('Permite las ventanas emergentes para exportar el PDF'); return; }
+  const rows = report.orders.map(order=>`<tr><td>${escapeHtml(order.codigo)}</td><td>${escapeHtml(order.cliente_nombre)}</td><td>${order.tipo === 'encargo' ? 'Encargo' : 'Delivery'}</td><td>${escapeHtml(order.estado)}</td><td>S/ ${Number(order.total||0).toFixed(2)}</td></tr>`).join('');
+  popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Resumen Punto Dulce</title><style>body{font:13px Arial,sans-serif;color:#35232a;margin:32px}h1{color:#702744;margin-bottom:4px}.sub{color:#725d63;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.card{border:1px solid #eadde2;border-radius:10px;padding:14px}.card small{display:block;color:#765f68;margin-bottom:8px}.card b{font-size:18px;color:#64243f}h2{font-size:16px;margin:24px 0 10px}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:9px;border-bottom:1px solid #eadde2}th{background:#f7eef2;color:#64243f;font-size:11px;text-transform:uppercase}@page{size:landscape;margin:14mm}</style></head><body><h1>Punto Dulce · Resumen administrativo</h1><p class="sub">Período: ${escapeHtml(report.range)} · Generado: ${new Date().toLocaleString('es-PE')}</p><div class="cards"><div class="card"><small>Pedidos</small><b>${report.orders.length}</b></div><div class="card"><small>Ventas</small><b>S/ ${report.revenue.toFixed(2)}</b></div><div class="card"><small>Ticket promedio</small><b>S/ ${report.avgTicket.toFixed(2)}</b></div><div class="card"><small>Tasa de entrega</small><b>${report.fulfillment}%</b></div><div class="card"><small>Pendientes</small><b>${report.pending}</b></div><div class="card"><small>Clientes</small><b>${report.customers.length}</b></div><div class="card"><small>Anticipos recibidos</small><b>S/ ${report.deposits.toFixed(2)}</b></div><div class="card"><small>Saldo por cobrar</small><b>S/ ${report.outstanding.toFixed(2)}</b></div></div><h2>Pedidos del período</h2><table><thead><tr><th>Código</th><th>Cliente</th><th>Tipo</th><th>Estado</th><th>Total</th></tr></thead><tbody>${rows || '<tr><td colspan="5">No hay pedidos en el período.</td></tr>'}</tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`);
+  popup.document.close();
+}
+
 /* ---- Ventas: consulta, búsqueda y detalle ---- */
 function getSaleDetails(sale){
   let detail = sale.detalle;
@@ -2071,6 +2318,7 @@ async function renderSupplies(){
 
   await loadSupplies();
   renderFilteredSupplies();
+  if(currentEmployeeRole === 'administrador') renderAdminDashboard();
 }
 
 function renderFilteredSupplies(){
