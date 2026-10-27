@@ -184,7 +184,7 @@ CREATE TABLE IF NOT EXISTS ventas (
     detalle TEXT,
     fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fecha_iso VARCHAR(50),
-    pedido_id VARCHAR(12) NULL
+    pedido_id INT NULL
 );
 
 CREATE TABLE IF NOT EXISTS detalle_ventas (

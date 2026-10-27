@@ -35,21 +35,21 @@ module.exports = {
     const conditions = [];
     const params = [];
     if (q) {
-      conditions.push('(id LIKE ? OR nombre LIKE ? OR telefono LIKE ?)');
+      conditions.push('(v.id LIKE ? OR v.nombre LIKE ? OR v.telefono LIKE ? OR p.codigo LIKE ?)');
       const term = `%${q}%`;
-      params.push(term, term, term);
+      params.push(term, term, term, term);
     }
-    if (desde) { conditions.push('fecha >= ?'); params.push(`${desde} 00:00:00`); }
-    if (hasta) { conditions.push('fecha <= ?'); params.push(`${hasta} 23:59:59`); }
-    if (metodoPago) { conditions.push('LOWER(notas) = ?'); params.push(metodoPago.toLowerCase()); }
-    if (soloSemana) conditions.push('YEARWEEK(fecha, 1) = YEARWEEK(CURDATE(), 1)');
+    if (desde) { conditions.push('v.fecha >= ?'); params.push(`${desde} 00:00:00`); }
+    if (hasta) { conditions.push('v.fecha <= ?'); params.push(`${hasta} 23:59:59`); }
+    if (metodoPago) { conditions.push('LOWER(v.notas) = ?'); params.push(metodoPago.toLowerCase()); }
+    if (soloSemana) conditions.push('YEARWEEK(v.fecha, 1) = YEARWEEK(CURDATE(), 1)');
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const [rows] = await pool.query(`SELECT * FROM ventas ${where} ORDER BY fecha DESC`, params);
+    const [rows] = await pool.query(`SELECT v.*, p.codigo AS pedido_codigo FROM ventas v LEFT JOIN pedidos p ON p.id = v.pedido_id ${where} ORDER BY v.fecha DESC`, params);
     return rows;
   },
   async findOrdersWithoutSales({ q, desde, hasta, metodoPago, soloSemana } = {}) {
     if (metodoPago && metodoPago.toLowerCase() !== 'pendiente') return [];
-    const conditions = ['NOT EXISTS (SELECT 1 FROM ventas v WHERE v.pedido_id = p.codigo OR v.id = p.codigo)'];
+    const conditions = ['NOT EXISTS (SELECT 1 FROM ventas v WHERE v.pedido_id = p.id OR v.id = p.codigo)'];
     const params = [];
     if (q) {
       conditions.push('(p.codigo LIKE ? OR p.cliente_nombre LIKE ? OR p.cliente_telefono LIKE ?)');
@@ -64,7 +64,7 @@ module.exports = {
        FROM pedidos p WHERE ${conditions.join(' AND ')} ORDER BY p.created_at DESC`, params
     );
     return rows.map(order => ({
-      id: order.codigo, pedido_id: order.codigo, nombre: order.cliente_nombre,
+      id: order.codigo, pedido_id: order.codigo, pedido_codigo: order.codigo, nombre: order.cliente_nombre,
       telefono: order.cliente_telefono, total: order.total, fecha: order.created_at,
       fecha_iso: order.created_at, notas: 'Pendiente', estado: 'Pedido',
       detalle: JSON.stringify({ items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items, metodoPago: 'Pendiente' }),

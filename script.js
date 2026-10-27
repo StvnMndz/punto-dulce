@@ -1689,9 +1689,10 @@ function renderAdminDashboard(){
   if(trendWrap) trendWrap.innerHTML = `<div class="admin-trend-bars">${trend.map(day=>`<div class="admin-trend-column"><strong>S/ ${day.amount.toFixed(0)}</strong><span class="admin-trend-bar" style="height:${Math.max(day.amount ? 8 : 2, day.amount/trendMax*100)}%"></span><small>${adminDateLabel(day.key)}</small></div>`).join('')}</div>`;
 
   const orderByCode = new Map(orders.map(order => [String(order.codigo), order]));
+  const orderById = new Map(orders.map(order => [String(order.id), order]));
   const payments = new Map();
   inRangeSales.forEach(sale => {
-    const order = orderByCode.get(String(sale.pedido_id || ''));
+    const order = orderById.get(String(sale.pedido_id || '')) || orderByCode.get(String(sale.id || ''));
     if(!order || order.tipo !== 'delivery') return;
     const { payment } = getSaleDetails(sale);
     const label = payment || 'Pendiente';
@@ -1765,7 +1766,7 @@ function filterSales(){
   const payment = (document.getElementById('salesPayment')?.value || '').toLowerCase();
   return salesCache.filter(sale => {
     const details = getSaleDetails(sale);
-    const haystack = [sale.id, sale.nombre, sale.telefono, sale.pedido_id, details.payment].join(' ').toLowerCase();
+    const haystack = [sale.id, sale.nombre, sale.telefono, sale.pedido_codigo, details.payment].join(' ').toLowerCase();
     const date = String(sale.fecha || sale.fecha_iso || '').slice(0, 10);
     if(currentEmployeeRole === 'ventas' && !isInCurrentWeek(sale.fecha || sale.fecha_iso)) return false;
     return (!query || haystack.includes(query)) && (!from || date >= from) && (!to || date <= to)
@@ -1798,7 +1799,7 @@ function renderFilteredSales(){
     const extras = items.length > 2 ? ` +${items.length - 2}` : '';
     return `<tr>
       <td>${sale.fecha ? new Date(String(sale.fecha).replace(' ', 'T')).toLocaleString('es-PE', { dateStyle:'medium', timeStyle:'short' }) : '—'}</td>
-      <td><strong>${escapeHtml(sale.pedido_id || sale.id)}</strong>${sale.desde_pedido ? '<br><span class="hint">Registrado desde pedido</span>' : ''}</td>
+      <td><strong>${escapeHtml(sale.pedido_codigo || sale.id)}</strong>${sale.desde_pedido ? '<br><span class="hint">Registrado desde pedido</span>' : ''}</td>
       <td>${escapeHtml(sale.nombre)}<br><span class="hint">${escapeHtml(sale.telefono || 'Sin teléfono')}</span></td>
       <td>${productNames || 'Sin detalle'}${extras}</td>
       <td><span class="pill pill-neutral">${escapeHtml(payment)}</span></td>
@@ -1834,7 +1835,7 @@ function exportSalesPdf(){
       return `<div>${qty} × ${name}${customization} <span class="muted">— S/ ${(qty * price).toFixed(2)}</span></div>`;
     }).join('') : '<span class="muted">Sin detalle de productos</span>';
     const date = sale.fecha ? new Date(String(sale.fecha).replace(' ', 'T')).toLocaleString('es-PE', { dateStyle:'medium', timeStyle:'short' }) : '—';
-    return `<tr><td>${escapeHtml(date)}</td><td><strong>${escapeHtml(sale.pedido_id || sale.id)}</strong>${sale.desde_pedido ? '<br><span class="muted">Desde pedido</span>' : ''}</td><td>${escapeHtml(sale.nombre)}<br><span class="muted">${escapeHtml(sale.telefono || 'Sin teléfono')}</span></td><td>${products}</td><td>${escapeHtml(details.payment)}</td><td class="money">S/ ${Number(sale.total || 0).toFixed(2)}</td></tr>`;
+    return `<tr><td>${escapeHtml(date)}</td><td><strong>${escapeHtml(sale.pedido_codigo || sale.id)}</strong>${sale.desde_pedido ? '<br><span class="muted">Desde pedido</span>' : ''}</td><td>${escapeHtml(sale.nombre)}<br><span class="muted">${escapeHtml(sale.telefono || 'Sin teléfono')}</span></td><td>${products}</td><td>${escapeHtml(details.payment)}</td><td class="money">S/ ${Number(sale.total || 0).toFixed(2)}</td></tr>`;
   }).join('');
   const title = `Reporte de ventas Punto Dulce ${new Date().toLocaleDateString('es-PE')}`;
   reportWindow.document.open();
@@ -1853,12 +1854,12 @@ function showSaleDetails(id){
   const { items, payment } = getSaleDetails(sale);
   document.getElementById('saleDetailContent').innerHTML = `
     <div class="sale-detail-meta">
-      <p><span>Código</span><strong>${escapeHtml(sale.pedido_id || sale.id)}</strong></p>
+      <p><span>Código</span><strong>${escapeHtml(sale.pedido_codigo || sale.id)}</strong></p>
       <p><span>Cliente</span><strong>${escapeHtml(sale.nombre)}</strong></p>
       <p><span>Teléfono</span><strong>${escapeHtml(sale.telefono || '—')}</strong></p>
       <p><span>Fecha</span><strong>${sale.fecha ? new Date(String(sale.fecha).replace(' ','T')).toLocaleString('es-PE', { dateStyle:'medium', timeStyle:'short' }) : '—'}</strong></p>
       <p><span>Pago</span><strong>${escapeHtml(payment)}</strong></p>
-      ${sale.pedido_id ? `<p><span>Pedido asociado</span><strong>${escapeHtml(sale.pedido_id)}</strong></p>` : ''}
+      ${sale.pedido_codigo ? `<p><span>Pedido asociado</span><strong>${escapeHtml(sale.pedido_codigo)}</strong></p>` : ''}
     </div>
     <div class="sale-detail-items">${items.length ? items.map(item => `
       <div class="sale-item-row"><div><strong>${escapeHtml(item.nombre || item.name || 'Producto')}</strong>

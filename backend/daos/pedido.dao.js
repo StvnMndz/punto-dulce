@@ -5,7 +5,7 @@ module.exports = {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
-      await connection.query(
+      const [pedidoResult] = await connection.query(
         `INSERT INTO pedidos (codigo, cliente_nombre, cliente_telefono, tipo, direccion, fecha_entrega, notas, items, total, anticipo)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [pedido.codigo, pedido.nombre, pedido.telefono, pedido.tipo, pedido.direccion || null,
@@ -15,7 +15,7 @@ module.exports = {
         `INSERT INTO ventas (id, tipo, nombre, telefono, notas, total, estado, detalle, fecha_iso, pedido_id)
          VALUES (?, 'venta', ?, ?, ?, ?, 'Completada', ?, ?, ?)`,
         [pedido.codigo, pedido.nombre, pedido.telefono || '', pedido.metodoPago || 'Pendiente', pedido.total,
-          JSON.stringify({ items: pedido.items, metodoPago: pedido.metodoPago || 'Pendiente' }), new Date().toISOString(), pedido.codigo]
+          JSON.stringify({ items: pedido.items, metodoPago: pedido.metodoPago || 'Pendiente' }), new Date().toISOString(), pedidoResult.insertId]
       );
       await connection.commit();
     } catch (error) {
