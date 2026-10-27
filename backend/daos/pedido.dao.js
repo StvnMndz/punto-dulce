@@ -2,12 +2,32 @@ const pool = require('../db');
 
 module.exports = {
   async create(pedido) {
-    await pool.query(
-      `INSERT INTO pedidos (codigo, cliente_nombre, cliente_telefono, tipo, direccion, fecha_entrega, notas, items, total, anticipo)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [pedido.codigo, pedido.nombre, pedido.telefono, pedido.tipo, pedido.direccion || null,
-        pedido.fechaEntrega || null, pedido.notas || null, JSON.stringify(pedido.items), pedido.total, pedido.anticipo ?? null]
-    );
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.query(
+        `INSERT INTO pedidos (codigo, cliente_nombre, cliente_telefono, tipo, direccion, fecha_entrega, notas, items, total, anticipo)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [pedido.codigo, pedido.nombre, pedido.telefono, pedido.tipo, pedido.direccion || null,
+          pedido.fechaEntrega || null, pedido.notas || null, JSON.stringify(pedido.items), pedido.total, pedido.anticipo ?? null]
+      );
+      await connection.query(
+        `INSERT INTO ventas (id, tipo, nombre, telefono, notas, total, estado, detalle, fecha_iso, pedido_id)
+         VALUES (?, 'venta', ?, ?, ?, ?, 'Completada', ?, ?, ?)`,
+        [pedido.codigo, pedido.nombre, pedido.telefono || '', pedido.metodoPago || 'Pendiente', pedido.total,
+          JSON.stringify({ items: pedido.items, metodoPago: pedido.metodoPago || 'Pendiente' }), new Date().toISOString(), pedido.codigo]
+      );
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  },
+  async findByCode(codigo) {
+    const [rows] = await pool.query('SELECT codigo, cliente_nombre, cliente_telefono, tipo, items, total FROM pedidos WHERE codigo = ?', [codigo]);
+    return rows[0] || null;
   },
   async findForTracking(codigo, telefono) {
     const [rows] = await pool.query(

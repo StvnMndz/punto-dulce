@@ -18,6 +18,7 @@ const DEFAULT_PRODUCTS = [
   {id:'tor1', cat:'torta', name:'Torta Personalizada', desc:'Diseña tu torta: tamaño, sabor, relleno y decoración a elección.', price:60, icon:'🎂', media:'media-torta', customizable:true, disponible:true},
 ];
 const CATEGORY_LABELS = {cupcake:'Cupcake', brownie:'Brownie', alfajor:'Alfajor', galleta:'Galletas', torta:'Torta personalizada'};
+let orderSubmissionInProgress = false;
 
 const CUSTOM_OPTIONS = {
   tamano: [
@@ -546,6 +547,8 @@ function changeCartQty(id, cambio){
 
 async function submitOrder(){
 
+  if(orderSubmissionInProgress) return;
+
   const cart = getCart();
 
   if(cart.length === 0){
@@ -623,6 +626,18 @@ async function submitOrder(){
       ? document.getElementById('notas').value.trim()
       : '';
 
+  const submitButton = document.querySelector('#orderForm button[onclick="submitOrder()"]') || document.querySelector('button[onclick="submitOrder()"]');
+  const orderCodeKey = 'pd_codigo_pedido_pendiente';
+  let orderCode = sessionStorage.getItem(orderCodeKey);
+  if(!orderCode){
+    const bytes = new Uint8Array(3);
+    if(window.crypto?.getRandomValues) window.crypto.getRandomValues(bytes);
+    else for(let index = 0; index < bytes.length; index++) bytes[index] = Math.floor(Math.random() * 256);
+    orderCode = `PD-${Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase()}`;
+    sessionStorage.setItem(orderCodeKey, orderCode);
+  }
+  orderSubmissionInProgress = true;
+  if(submitButton){ submitButton.disabled = true; submitButton.dataset.originalText = submitButton.textContent; submitButton.textContent = 'Registrando pedido…'; }
   try{
 
     /* =====================================
@@ -636,6 +651,7 @@ async function submitOrder(){
 
         nombre,
         telefono,
+        codigo: orderCode,
 
         tipo: orderType,
 
@@ -649,33 +665,9 @@ async function submitOrder(){
 
         anticipo: orderType === 'encargo' ? Number(detail.anticipo || 0) : 0,
 
+        metodoPago: detail.metodoPago || 'Pendiente',
+
         items
-
-      })
-    });
-
-    /* =====================================
-       2. GUARDAR VENTA
-       ===================================== */
-
-    const venta = await apiRequest('/ventas', {
-      method: 'POST',
-
-      body: JSON.stringify({
-
-        pedidoId: pedido.codigo,
-
-        nombre,
-
-        telefono,
-
-        metodoPago:
-          detail.metodoPago || 'Pendiente',
-
-        items,
-
-        total:
-          Number(pedido.total)
 
       })
     });
@@ -694,6 +686,7 @@ async function submitOrder(){
       'pd_codigo_pedido',
       pedido.codigo
     );
+    sessionStorage.removeItem(orderCodeKey);
 
     sessionStorage.setItem(
       'pd_telefono_pedido',
@@ -722,10 +715,11 @@ async function submitOrder(){
       error
     );
 
-    showToast(
-      error.message ||
-      'No se pudo registrar el pedido'
-    );
+    showToast(error.message || 'No se pudo confirmar el pedido. Inténtalo nuevamente.');
+
+  }finally{
+    orderSubmissionInProgress = false;
+    if(submitButton){ submitButton.disabled = false; submitButton.textContent = submitButton.dataset.originalText || 'Confirmar pedido'; }
 
   }
 
@@ -1804,7 +1798,7 @@ function renderFilteredSales(){
     const extras = items.length > 2 ? ` +${items.length - 2}` : '';
     return `<tr>
       <td>${sale.fecha ? new Date(String(sale.fecha).replace(' ', 'T')).toLocaleString('es-PE', { dateStyle:'medium', timeStyle:'short' }) : '—'}</td>
-      <td><strong>${escapeHtml(sale.id)}</strong>${sale.pedido_id ? `<br><span class="hint">Pedido ${escapeHtml(sale.pedido_id)}</span>` : ''}</td>
+      <td><strong>${escapeHtml(sale.pedido_id || sale.id)}</strong>${sale.desde_pedido ? '<br><span class="hint">Registrado desde pedido</span>' : ''}</td>
       <td>${escapeHtml(sale.nombre)}<br><span class="hint">${escapeHtml(sale.telefono || 'Sin teléfono')}</span></td>
       <td>${productNames || 'Sin detalle'}${extras}</td>
       <td><span class="pill pill-neutral">${escapeHtml(payment)}</span></td>
@@ -1840,7 +1834,7 @@ function exportSalesPdf(){
       return `<div>${qty} × ${name}${customization} <span class="muted">— S/ ${(qty * price).toFixed(2)}</span></div>`;
     }).join('') : '<span class="muted">Sin detalle de productos</span>';
     const date = sale.fecha ? new Date(String(sale.fecha).replace(' ', 'T')).toLocaleString('es-PE', { dateStyle:'medium', timeStyle:'short' }) : '—';
-    return `<tr><td>${escapeHtml(date)}</td><td><strong>${escapeHtml(sale.id)}</strong>${sale.pedido_id ? `<br><span class="muted">Pedido ${escapeHtml(sale.pedido_id)}</span>` : ''}</td><td>${escapeHtml(sale.nombre)}<br><span class="muted">${escapeHtml(sale.telefono || 'Sin teléfono')}</span></td><td>${products}</td><td>${escapeHtml(details.payment)}</td><td class="money">S/ ${Number(sale.total || 0).toFixed(2)}</td></tr>`;
+    return `<tr><td>${escapeHtml(date)}</td><td><strong>${escapeHtml(sale.pedido_id || sale.id)}</strong>${sale.desde_pedido ? '<br><span class="muted">Desde pedido</span>' : ''}</td><td>${escapeHtml(sale.nombre)}<br><span class="muted">${escapeHtml(sale.telefono || 'Sin teléfono')}</span></td><td>${products}</td><td>${escapeHtml(details.payment)}</td><td class="money">S/ ${Number(sale.total || 0).toFixed(2)}</td></tr>`;
   }).join('');
   const title = `Reporte de ventas Punto Dulce ${new Date().toLocaleDateString('es-PE')}`;
   reportWindow.document.open();
@@ -1859,7 +1853,7 @@ function showSaleDetails(id){
   const { items, payment } = getSaleDetails(sale);
   document.getElementById('saleDetailContent').innerHTML = `
     <div class="sale-detail-meta">
-      <p><span>Código</span><strong>${escapeHtml(sale.id)}</strong></p>
+      <p><span>Código</span><strong>${escapeHtml(sale.pedido_id || sale.id)}</strong></p>
       <p><span>Cliente</span><strong>${escapeHtml(sale.nombre)}</strong></p>
       <p><span>Teléfono</span><strong>${escapeHtml(sale.telefono || '—')}</strong></p>
       <p><span>Fecha</span><strong>${sale.fecha ? new Date(String(sale.fecha).replace(' ','T')).toLocaleString('es-PE', { dateStyle:'medium', timeStyle:'short' }) : '—'}</strong></p>
@@ -1871,10 +1865,10 @@ function showSaleDetails(id){
         <span>${Number(item.cantidad || item.qty || 1)} × S/ ${Number(item.precio || item.price || 0).toFixed(2)}${item.detalle ? ` · ${escapeHtml(item.detalle)}` : ''}</span>
       </div><strong>S/ ${(Number(item.cantidad || item.qty || 1) * Number(item.precio || item.price || 0)).toFixed(2)}</strong></div>`).join('') : '<p class="hint">Esta venta no tiene productos detallados.</p>'}</div>
     <div class="sale-total-line"><span>Total pagado</span><strong>S/ ${Number(sale.total || 0).toFixed(2)}</strong></div>
-    <div class="panel-head-actions sale-detail-actions">
+    ${sale.desde_pedido ? '<p class="hint">Este registro se recuperó del pedido porque todavía no tenía una venta asociada. Actualiza su estado desde la sección Pedidos.</p>' : `<div class="panel-head-actions sale-detail-actions">
       <button class="btn btn-outline btn-small" type="button" onclick="editSale('${escapeHtml(sale.id)}')">Actualizar venta</button>
       <button class="btn btn-small btn-danger" type="button" onclick="deleteSale('${escapeHtml(sale.id)}')">Eliminar venta</button>
-    </div>`;
+    </div>`}`;
   document.getElementById('saleDetailModal').classList.add('open');
 }
 
@@ -1911,7 +1905,7 @@ function closeSaleModal(){ document.getElementById('saleModal').classList.remove
 
 function editSale(id){
   const sale = salesCache.find(item => String(item.id) === String(id));
-  if(!sale) return;
+  if(!sale || sale.desde_pedido) return;
   const { items, payment } = getSaleDetails(sale);
   document.getElementById('saleDetailModal').classList.remove('open');
   openSaleModal();
@@ -1933,6 +1927,7 @@ function editSale(id){
 }
 
 async function deleteSale(id){
+  if(salesCache.find(item => String(item.id) === String(id))?.desde_pedido) return;
   if(!confirm('¿Eliminar esta venta? Esta acción no se puede deshacer.')) return;
   try {
     await apiRequest(`/ventas/${encodeURIComponent(id)}`, { method:'DELETE' });

@@ -52,7 +52,12 @@ exports.eliminar = async (req, res) => {
 exports.listar = async (req, res) => {
   try {
     const { q, desde, hasta, metodoPago } = req.query;
-    return res.json(await ventaDao.findAll({ q: String(q || '').trim(), desde, hasta, metodoPago, soloSemana: req.empleado?.rol === 'ventas' }));
+    const filters = { q: String(q || '').trim(), desde, hasta, metodoPago, soloSemana: req.empleado?.rol === 'ventas' };
+    const [sales, legacyOrders] = await Promise.all([
+      ventaDao.findAll(filters),
+      ventaDao.findOrdersWithoutSales(filters)
+    ]);
+    return res.json([...sales, ...legacyOrders].sort((a, b) => new Date(b.fecha || b.fecha_iso || 0) - new Date(a.fecha || a.fecha_iso || 0)));
   }
   catch (error) { console.error('Error al listar ventas:', error); return res.status(500).json({ error: 'No se pudieron obtener las ventas' }); }
 };

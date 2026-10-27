@@ -4,10 +4,21 @@ const pedidoDao = require('../daos/pedido.dao');
 const ESTADOS = ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'en_camino', 'entregado', 'cancelado'];
 const TIPOS = ['delivery', 'encargo'];
 const generarCodigo = () => `PD-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+const esMismoPedido = (existente, pedido) => {
+  let items = existente.items;
+  if (typeof items === 'string') { try { items = JSON.parse(items); } catch { items = []; } }
+  return String(existente.cliente_telefono) === pedido.telefono
+    && String(existente.cliente_nombre) === pedido.nombre
+    && String(existente.tipo) === pedido.tipo
+    && Number(existente.total) === Number(pedido.total)
+    && JSON.stringify(items) === JSON.stringify(pedido.items);
+};
 
 exports.crear = async (req, res) => {
   try {
-    const { nombre, telefono, tipo, direccion, fechaEntrega, notas, items } = req.body || {};
+    const { nombre, telefono, tipo, direccion, fechaEntrega, notas, items, metodoPago } = req.body || {};
+    const codigoSolicitado = String(req.body?.codigo || '').trim().toUpperCase();
+    if (codigoSolicitado && !/^PD-[A-F0-9]{6}$/.test(codigoSolicitado)) return res.status(400).json({ error: 'El código del pedido no es válido.' });
     const anticipo = Number(req.body?.anticipo || 0);
     if (!nombre || !telefono) return res.status(400).json({ error: 'Nombre y teléfono son obligatorios.' });
     if (!TIPOS.includes(tipo)) return res.status(400).json({ error: 'Tipo de pedido inválido.' });
@@ -23,14 +34,30 @@ exports.crear = async (req, res) => {
     if (tipo === 'encargo' && anticipo <= 0) return res.status(400).json({ error: 'Registra un anticipo mayor a cero para los pedidos por encargo.' });
     const pedido = { nombre: String(nombre).slice(0, 120), telefono: String(telefono).slice(0, 30), tipo,
       direccion, fechaEntrega, notas, items: cleanItems,
-      total, anticipo };
+      total, anticipo, metodoPago: String(metodoPago || 'Pendiente').slice(0, 40) };
+    if (codigoSolicitado) {
+      const existente = await pedidoDao.findByCode(codigoSolicitado);
+      if (existente) {
+        if (esMismoPedido(existente, pedido)) {
+          return res.json({ ok: true, codigo: existente.codigo, total: Number(existente.total), repetido: true });
+        }
+        return res.status(409).json({ error: 'El código ya fue utilizado. Actualiza la página e inténtalo nuevamente.' });
+      }
+    }
     for (let attempt = 0; attempt < 5; attempt++) {
-      pedido.codigo = generarCodigo();
+      pedido.codigo = codigoSolicitado || generarCodigo();
       try {
         await pedidoDao.create(pedido);
         return res.status(201).json({ ok: true, codigo: pedido.codigo, total: pedido.total });
       } catch (error) {
         if (error.code !== 'ER_DUP_ENTRY') throw error;
+        if (codigoSolicitado) {
+          const existente = await pedidoDao.findByCode(codigoSolicitado);
+          if (existente && esMismoPedido(existente, pedido)) {
+            return res.json({ ok: true, codigo: existente.codigo, total: Number(existente.total), repetido: true });
+          }
+          return res.status(409).json({ error: 'El código ya fue utilizado. Actualiza la página e inténtalo nuevamente.' });
+        }
       }
     }
     return res.status(500).json({ error: 'No se pudo generar el código del pedido.' });
