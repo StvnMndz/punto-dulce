@@ -64,7 +64,8 @@
         </div>
         <div class="field">
           <label for="clienteTelefono">Teléfono de contacto</label>
-          <input type="tel" id="clienteTelefono" placeholder="Ej. 987 654 321">
+          <input type="tel" id="clienteTelefono" placeholder="987654321" inputmode="numeric" autocomplete="tel-national" maxlength="9" minlength="9" pattern="[0-9]{9}" aria-describedby="clienteTelefonoAyuda" required>
+          <small id="clienteTelefonoAyuda" class="phone-hint">Ingresa exactamente 9 dígitos, sin espacios ni guiones.</small>
         </div>
 
         <div id="deliveryFields" class="conditional show">

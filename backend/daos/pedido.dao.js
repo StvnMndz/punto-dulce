@@ -33,7 +33,7 @@ module.exports = {
   },
   async findForTracking(codigo, telefono) {
     const [rows] = await pool.query(
-      `SELECT codigo, tipo, estado, total, items, fecha_entrega, created_at, updated_at
+      `SELECT codigo, cliente_nombre, tipo, estado, total, items, fecha_entrega, created_at, updated_at
        FROM pedidos WHERE codigo = ? AND cliente_telefono = ?`, [codigo, telefono]
     );
     return rows[0] || null;

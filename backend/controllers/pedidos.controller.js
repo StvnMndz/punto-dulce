@@ -23,6 +23,8 @@ exports.crear = async (req, res) => {
     if (codigoSolicitado && !/^PD-[A-F0-9]{6}$/.test(codigoSolicitado)) return res.status(400).json({ error: 'El código del pedido no es válido.' });
     const anticipo = Number(req.body?.anticipo || 0);
     if (!nombre || !telefono) return res.status(400).json({ error: 'Nombre y teléfono son obligatorios.' });
+    const telefonoValidado = String(telefono).trim();
+    if (!/^\d{9}$/.test(telefonoValidado)) return res.status(400).json({ error: 'El teléfono debe tener exactamente 9 dígitos.' });
     if (!TIPOS.includes(tipo)) return res.status(400).json({ error: 'Tipo de pedido inválido.' });
     if (tipo === 'delivery' && !direccion) return res.status(400).json({ error: 'La dirección es obligatoria para delivery.' });
     if (!Array.isArray(items) || !items.length || items.length > 50) return res.status(400).json({ error: 'El pedido no tiene productos.' });
@@ -34,7 +36,7 @@ exports.crear = async (req, res) => {
     const total = cleanItems.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
     if (!Number.isFinite(anticipo) || anticipo < 0 || anticipo > total) return res.status(400).json({ error: 'El anticipo debe estar entre S/ 0 y el total del pedido.' });
     if (tipo === 'encargo' && anticipo <= 0) return res.status(400).json({ error: 'Registra un anticipo mayor a cero para los pedidos por encargo.' });
-    const pedido = { nombre: String(nombre).slice(0, 120), telefono: String(telefono).slice(0, 30), tipo,
+    const pedido = { nombre: String(nombre).trim().slice(0, 120), telefono: telefonoValidado, tipo,
       direccion, fechaEntrega, notas, items: cleanItems,
       total, anticipo, metodoPago: String(metodoPago || 'Pendiente').slice(0, 40) };
     if (codigoSolicitado) {

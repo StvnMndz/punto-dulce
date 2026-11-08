@@ -535,6 +535,16 @@ function setOrderType(type){
   document.getElementById('encargoFields').classList.toggle('show', type==='encargo');
 }
 
+function initOrderPhoneField(){
+  const input = document.getElementById('clienteTelefono');
+  if(!input) return;
+
+  input.addEventListener('input', ()=>{
+    const digits = input.value.replace(/\D/g, '').slice(0, 9);
+    if(input.value !== digits) input.value = digits;
+    input.setCustomValidity(digits.length === 9 ? '' : 'Ingresa exactamente 9 dígitos.');
+  });
+}
 function removeFromCart(id){
   const cart = getCart().filter(i=>i.id!==id);
   setCart(cart);
@@ -626,16 +636,22 @@ async function submitOrder(){
     return;
   }
 
-  const nombre =
-    document.getElementById('clienteNombre').value.trim();
+  const nombre = document.getElementById('clienteNombre').value.trim();
+  const telefonoInput = document.getElementById('clienteTelefono');
+  const telefono = telefonoInput.value.trim();
 
-  const telefono =
-    document.getElementById('clienteTelefono').value.trim();
-
-  if(!nombre || !telefono){
-    showToast('Completa tu nombre y teléfono');
+  if(!nombre){
+    showToast('Ingresa tu nombre completo.');
+    document.getElementById('clienteNombre').focus();
     return;
   }
+  if(!/^\d{9}$/.test(telefono)){
+    telefonoInput.setCustomValidity('Ingresa exactamente 9 dígitos, sin espacios ni guiones.');
+    telefonoInput.reportValidity();
+    telefonoInput.focus();
+    return;
+  }
+  telefonoInput.setCustomValidity('');
 
   let detail = {};
 
@@ -857,98 +873,42 @@ async function renderOrders(){
     const estadoActual =
       estadosOrden.indexOf(pedido.estado);
 
+    const tipoTexto = pedido.tipo === 'delivery' ? 'Delivery' : 'Por encargo';
+    const productosHtml = items.map(item => `
+      <li class="order-product-row">
+        <span>${escapeHtml(item.nombre)} <small>× ${Number(item.cantidad) || 1}</small></span>
+        <strong>S/ ${(Number(item.precio) * Number(item.cantidad)).toFixed(2)}</strong>
+      </li>
+    `).join('');
+
     wrap.innerHTML = `
-      <div class="order-card">
-
+      <article class="order-card">
         <div class="order-card-top">
-
           <div>
-
-            <div class="order-id">
-              ${pedido.codigo}
-              ·
-              ${pedido.tipo === 'delivery'
-                ? 'Delivery'
-                : 'Por encargo'}
-            </div>
-
-            <div class="order-sub">
-              Cliente: ${pedido.cliente_nombre}
-            </div>
-
-            <div class="order-sub">
-              Estado:
-              <strong>${estadoTexto}</strong>
-            </div>
-
-            <div class="order-sub">
-              Total:
-              <strong>
-                S/ ${Number(pedido.total).toFixed(2)}
-              </strong>
-            </div>
-
+            <p class="order-kicker">Seguimiento de pedido</p>
+            <h2 class="order-id">${escapeHtml(pedido.codigo)} <span>${tipoTexto}</span></h2>
           </div>
-
         </div>
-
-        <div class="stepper">
-
+        <div class="order-meta-grid">
+          <div class="order-meta-item"><span>Cliente</span><strong>${escapeHtml(pedido.cliente_nombre || 'Cliente')}</strong></div>
+          <div class="order-meta-item"><span>Estado actual</span><strong class="order-status">${escapeHtml(estadoTexto)}</strong></div>
+          <div class="order-meta-item"><span>Total del pedido</span><strong>S/ ${Number(pedido.total || 0).toFixed(2)}</strong></div>
+        </div>
+        <div class="stepper" aria-label="Progreso del pedido">
           ${STATUS_STEPS.map((s, i) => `
-
             <div class="step ${i <= estadoActual ? 'done' : ''}">
-
               <div class="bar"></div>
-
-              <div class="dot">
-                ${i <= estadoActual ? '✓' : ''}
-              </div>
-
-              <div class="lbl">
-                ${s}
-              </div>
-
+              <div class="dot">${i <= estadoActual ? '✓' : ''}</div>
+              <div class="lbl">${s}</div>
             </div>
-
           `).join('')}
-
         </div>
-
-        <div style="margin-top:20px;">
-
-          <h3>Productos</h3>
-
-          ${items.map(item => `
-
-            <div class="order-sub">
-
-              ${item.nombre}
-              × ${item.cantidad}
-
-              —
-              S/ ${(
-                Number(item.precio) *
-                Number(item.cantidad)
-              ).toFixed(2)}
-
-            </div>
-
-          `).join('')}
-
+        <div class="order-products">
+          <h3>Productos del pedido</h3>
+          <ul class="order-product-list">${productosHtml}</ul>
         </div>
-
-        ${
-          pedido.direccion
-            ? `
-              <div class="order-sub" style="margin-top:15px;">
-                Dirección:
-                ${pedido.direccion}
-              </div>
-            `
-            : ''
-        }
-
-      </div>
+        ${pedido.direccion ? `<p class="order-address"><strong>Dirección de entrega</strong><span>${escapeHtml(pedido.direccion)}</span></p>` : ''}
+      </article>
     `;
 
   }catch(error){
@@ -2841,6 +2801,7 @@ async function advanceEmployeeOrder(
 document.addEventListener('DOMContentLoaded', ()=>{
   initMobileMenu();
   initContactForm();
+  initOrderPhoneField();
   updateCartBadge();
   initCatalogFilters();   // no-op si no existe #filters
   renderCartPanel();      // no-op si no existe #cartItems
