@@ -265,7 +265,7 @@ function initContactForm(){
     const tema = document.getElementById('contTema').value;
     const mensaje = document.getElementById('contMensaje').value.trim();
     const texto = `Hola, soy ${nombre}.\nMi contacto es: ${contacto}.\nTema: ${tema}.\nConsulta: ${mensaje}`;
-    const url = `https://wa.me/51987654321?text=${encodeURIComponent(texto)}`;
+    const url = `https://wa.me/51994361475?text=${encodeURIComponent(texto)}`;
     const chatWindow = window.open(url, '_blank');
     if(chatWindow) chatWindow.opener = null;
     else window.location.href = url;
