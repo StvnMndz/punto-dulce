@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS productos (
 
 USE punto_dulce;
 
--- creacion productos
+-- Creación de productos.
 INSERT INTO productos
 (id, cat, nombre, descripcion, precio, icono, personalizable, disponible, media)
 VALUES

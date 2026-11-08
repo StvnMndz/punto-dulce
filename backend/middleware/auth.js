@@ -1,10 +1,10 @@
-// Middleware que valida el JWT y limita endpoints a los roles autorizados.
+// Intermediario que valida el JWT y limita las rutas a los roles autorizados.
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'cambia_esta_clave';
 
-// Verifica que venga un token válido en el header Authorization: Bearer <token>
+// Verifica que llegue un token válido en la cabecera Authorization: Bearer <token>.
 function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
@@ -18,7 +18,7 @@ function requireAuth(req, res, next) {
   }
 }
 
-// Restringe una ruta a ciertos roles. Ej: requireRole('administrador')
+// Restringe una ruta a ciertos roles. Ejemplo: requireRole('administrador').
 function requireRole(...rolesPermitidos) {
   return (req, res, next) => {
     if (!req.empleado) return res.status(401).json({ error: 'No has iniciado sesión' });

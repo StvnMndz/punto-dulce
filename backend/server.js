@@ -1,4 +1,4 @@
-// Configura el servidor Express, middleware y rutas principales del backend.
+// Configura Express, los intermediarios y las rutas principales del servidor.
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -23,7 +23,7 @@ app.use(cors({
 // Convierte el cuerpo JSON de cada solicitud en req.body.
 app.use(express.json());
 
-// Endpoint sencillo para comprobar que el servicio está activo.
+// Ruta sencilla para comprobar que el servicio está activo.
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
@@ -31,7 +31,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Conecta cada grupo de endpoints con sus rutas y controladores.
+// Conecta cada grupo de direcciones con sus rutas y controladores.
 app.use('/api/auth', authRoutes);
 app.use('/api/empleados', empleadosRoutes);
 app.use('/api/insumos', insumosRoutes);

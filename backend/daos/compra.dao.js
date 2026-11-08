@@ -1,4 +1,4 @@
-// DAO de compras: guarda compras y actualiza el stock dentro de transacciones SQL.
+// DAO de compras: guarda compras y actualiza el inventario mediante transacciones SQL.
 const pool = require('../db');
 
 module.exports = {

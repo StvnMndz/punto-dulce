@@ -81,7 +81,7 @@ function soloSemanaParaRolActual(){
   return currentEmployeeRole === 'ventas';
 }
 
-/* ---------------- STATE (localStorage) ---------------- */
+/* ---------------- ESTADO (almacenamiento local) ---------------- */
 function getCart(){ return JSON.parse(localStorage.getItem('pd_cart') || '[]'); }
 function setCart(cart){ localStorage.setItem('pd_cart', JSON.stringify(cart)); updateCartBadge(); }
 
@@ -95,12 +95,12 @@ async function getProducts(){
   }
 }
 
-/* ---------------- SESIÓN DE EMPLEADO (Backend + MySQL) ----------------
+/* ---------------- SESIÓN DE EMPLEADO (servidor + MySQL) ----------------
    El registro, login y roles del personal ya NO se guardan en este
    navegador: viven en la base de datos MySQL, detrás del backend en
    /backend. Aquí solo guardamos el token de sesión (JWT) y una copia
    ligera de los datos del empleado para pintar la pantalla rápido.
-   Cambia API_BASE si tu backend corre en otra URL/puerto. */
+   Cambia API_BASE si el servidor corre en otra dirección o puerto. */
 const API_BASE = 'https://punto-dulce-backend.onrender.com/api';
 
 function getToken(){ return localStorage.getItem('pd_token'); }
@@ -125,7 +125,7 @@ const ROLE_TABS = {
 };
 
 async function apiRequest(path, options = {}){
-  // Centraliza las llamadas HTTP al backend y adjunta el token si hay sesión.
+  // Centraliza las solicitudes al servidor y adjunta el token si hay una sesión activa.
   const headers = Object.assign({'Content-Type':'application/json'}, options.headers || {});
   const token = getToken();
   if(token) headers.Authorization = 'Bearer ' + token;
@@ -228,7 +228,7 @@ function normalizeSupply(s){
   };
 }
 
-/* ---------------- UNIVERSAL: NAV + BADGE ---------------- */
+/* ---------------- GENERAL: NAVEGACIÓN + INDICADOR ---------------- */
 function updateCartBadge(){
   const el = document.getElementById('cartCount');
   if(el) el.textContent = getCart().length;
@@ -243,7 +243,7 @@ function initMobileMenu(){
   });
 }
 
-/* ---------------- TOAST ---------------- */
+/* ---------------- NOTIFICACIONES EMERGENTES ---------------- */
 let toastTimer;
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -281,7 +281,7 @@ function labelForCat(cat){
 }
 
 async function renderProducts(filter='todos'){
-  // Obtiene productos de la API y crea las tarjetas del catálogo.
+  // Obtiene los productos del servicio y crea las tarjetas del catálogo.
   const grid = document.getElementById('productGrid');
 
   if(!grid) return;
@@ -371,7 +371,7 @@ function initCatalogFilters(){
     btn.classList.add('active');
     renderProducts(btn.dataset.filter);
   });
-  // Deep-link por categoría vía ?cat=torta
+  // Abre directamente una categoría mediante ?cat=torta.
   const params = new URLSearchParams(window.location.search);
   const cat = params.get('cat');
   if(cat){
@@ -410,7 +410,7 @@ function addSimpleToCart(p, cantidad = 1){
   showToast(`${cantidad} x ${p.name} agregado al pedido`);
 }
 
-/* ---- Modal de personalización ---- */
+/* ---- Ventana de personalización ---- */
 let activeCustomProduct = null;
 let customSelection = {tamano:0, sabor:0, relleno:0, decoracion:0};
 
@@ -568,7 +568,7 @@ function changeCartQty(id, cambio){
 }
 
 async function submitOrder(){
-  // Envía el pedido; el backend registra su venta relacionada en la misma transacción.
+  // Envía el pedido; el servidor registra la venta relacionada en la misma transacción.
 
   if(orderSubmissionInProgress) return;
 
@@ -1228,7 +1228,7 @@ async function toggleEstadoPersonal(id, activo){
   }
 }
 
-/* ---- Tabs del panel ---- */
+/* ---- Pestañas del panel ---- */
 function initPanelTabs(){
   const tabs = document.querySelectorAll('.panel-tab');
   tabs.forEach(tab=>{
@@ -1570,7 +1570,7 @@ function renderAdminBars(elementId, entries, formatter = value => String(value))
   wrap.innerHTML = valid.map(([label, value]) => `<div class="admin-bar-row"><span class="admin-bar-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span><span class="admin-bar-track"><span class="admin-bar-fill" style="width:${Math.max(3, Number(value)/max*100)}%"></span></span><strong class="admin-bar-value">${escapeHtml(formatter(value))}</strong></div>`).join('');
 }
 
-// Dibuja las tarjetas, gráficas y tablas del dashboard de administrador.
+// Dibuja las tarjetas, gráficas y tablas del panel de administrador.
 function renderAdminDashboard(){
   const root = document.getElementById('adminAnalytics');
   if(!root || currentEmployeeRole !== 'administrador') return;
