@@ -84,8 +84,6 @@ function soloSemanaParaRolActual(){
 /* ---------------- STATE (localStorage) ---------------- */
 function getCart(){ return JSON.parse(localStorage.getItem('pd_cart') || '[]'); }
 function setCart(cart){ localStorage.setItem('pd_cart', JSON.stringify(cart)); updateCartBadge(); }
-function getOrders(){ return JSON.parse(localStorage.getItem('pd_orders') || '[]'); }
-function setOrders(orders){ localStorage.setItem('pd_orders', JSON.stringify(orders)); }
 
 async function getProducts(){
   try {
@@ -914,65 +912,6 @@ async function renderOrders(){
   }
 
 }
-async function advanceOrder(id, estadoActual){
-
-  const estados = [
-    'pendiente',
-    'confirmado',
-    'en_preparacion',
-    'listo',
-    'en_camino',
-    'entregado'
-  ];
-
-  const posicion =
-    estados.indexOf(estadoActual);
-
-  if(
-    posicion === -1 ||
-    posicion >= estados.length - 1
-  ){
-    return;
-  }
-
-  const nuevoEstado =
-    estados[posicion + 1];
-
-  try{
-
-    await apiRequest(
-      `/pedidos/${id}/estado`,
-      {
-        method: 'PATCH',
-
-        body: JSON.stringify({
-          estado: nuevoEstado
-        })
-      }
-    );
-
-    await renderOrders();
-
-    showToast(
-      `Pedido actualizado: ${nuevoEstado}`
-    );
-
-  }catch(error){
-
-    console.error(
-      'Error al actualizar pedido:',
-      error
-    );
-
-    showToast(
-      error.message ||
-      'No se pudo actualizar el pedido'
-    );
-
-  }
-
-}
-
 /* =========================================================
    PÁGINA: empleado-login.html
 ========================================================= */

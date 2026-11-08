@@ -31,7 +31,6 @@ img,svg{display:block;max-width:100%;}
 a{color:inherit;}
 button{font-family:inherit;cursor:pointer;}
 .wrap{max-width:1160px;margin:0 auto;padding:0 28px;}
-.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}
 main{display:block;}
 
 /* ---------- HEADER / NAV ---------- */
@@ -295,11 +294,6 @@ section{padding:64px 0;}
 .contact-faq-item summary::after{content:'+';position:absolute;right:0;top:12px;color:var(--berry);font-size:1.25rem;}
 .contact-faq-item[open] summary::after{content:'−';}
 .contact-faq-item p{margin:0;padding:0 0 15px;color:#6e5a50;font-size:.85rem;line-height:1.55;}
-.map-note{
-  margin-top:18px;border:1.5px dashed var(--line);border-radius:16px;padding:20px;text-align:center;
-  color:#7a6155;font-size:.86rem;background:var(--cream);
-}
-
 /* ---------- FOOTER ---------- */
 footer{background:var(--choco);color:#e9d9cf;padding:44px 0 24px;}
 .footer-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:32px;margin-bottom:32px;}
