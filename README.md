@@ -30,6 +30,11 @@ punto-dulce/
 └── README.md
 ```
 
+## Portada y navegación
+
+La página de inicio presenta el catálogo y los pedidos con una portada más clara, accesos directos a las categorías de postres y botones para explorar el catálogo o conocer cómo comprar. La imagen principal muestra una torta decorada y se sirve desde Unsplash.
+
+La barra de navegación se adapta al ancho de pantalla: en escritorio distribuye el logo, las secciones y los accesos; en tabletas y móviles agrupa las secciones en un menú desplegable para evitar que se encimen. Estos estilos se comparten entre las páginas públicas.
 ## Qué cambió: registro y roles del personal ahora usan MySQL
 
 Antes, las cuentas del personal se guardaban en `localStorage`. Ahora:
