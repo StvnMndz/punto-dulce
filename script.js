@@ -17,14 +17,50 @@ const DEFAULT_PRODUCTS = [
   {id:'gal2', cat:'galleta', name:'Galletas Chips de Chocolate', desc:'Galletas crocantes con chips de chocolate, caja x6.', price:10.0, icon:'🍪', media:'media-galleta', disponible:true},
   {id:'tor1', cat:'torta', name:'Torta Personalizada', desc:'Diseña tu torta: tamaño, sabor, relleno y decoración a elección.', price:60, icon:'🎂', media:'media-torta', customizable:true, disponible:true},
 ];
-// Fotografías ilustrativas de Unsplash para cada categoría del catálogo.
-const PRODUCT_IMAGE_BY_CATEGORY = {
+// Fotografías ilustrativas de Unsplash y Pexels, elegidas según cada postre.
+const PRODUCT_IMAGES = {
+  cupcakeChocolate: 'https://images.unsplash.com/photo-1483908514687-d25c79c15df0?auto=format&fit=crop&w=900&q=85',
+  cupcakeRedVelvet: 'https://images.unsplash.com/photo-1761751361544-33eeb10a624d?auto=format&fit=crop&w=900&q=85',
+  cupcakeVainilla: 'https://images.unsplash.com/photo-1658422928126-6120ea188353?auto=format&fit=crop&w=900&q=85',
+  brownieClasico: 'https://images.unsplash.com/photo-1515037893149-de7f840978e2?auto=format&fit=crop&w=900&q=85',
+  brownieDulceLeche: 'https://images.unsplash.com/photo-1723476359253-9a4d0457c82f?auto=format&fit=crop&w=900&q=85',
+  alfajorClasico: 'https://images.pexels.com/photos/25391920/pexels-photo-25391920.jpeg?auto=compress&cs=tinysrgb&w=900',
+  alfajorChocolate: 'https://images.pexels.com/photos/30699392/pexels-photo-30699392.jpeg?auto=compress&cs=tinysrgb&w=900',
+  galletaChocolate: 'https://images.unsplash.com/photo-1664854678365-ad59da72356c?auto=format&fit=crop&w=900&q=85',
+  galletaAvena: 'https://images.unsplash.com/photo-1631311253861-52eaf0337adb?auto=format&fit=crop&w=900&q=85',
+  tortaFresa: 'https://images.unsplash.com/photo-1561924607-7e9b21fb51ec?auto=format&fit=crop&w=900&q=85',
+  tortaChocolate: 'https://images.unsplash.com/photo-1761249257288-012ee13bd0c9?auto=format&fit=crop&w=900&q=85',
+  tortaPersonalizada: 'https://images.unsplash.com/photo-1762829667023-90021c63842a?auto=format&fit=crop&w=900&q=85',
   cupcake: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=900&q=85',
-  brownie: 'https://images.unsplash.com/photo-1723476359253-9a4d0457c82f?auto=format&fit=crop&w=900&q=85',
-  alfajor: 'https://images.unsplash.com/photo-1664854678365-ad59da72356c?auto=format&fit=crop&w=900&q=85',
+  brownie: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=900&q=85',
+  alfajor: 'https://images.pexels.com/photos/25391920/pexels-photo-25391920.jpeg?auto=compress&cs=tinysrgb&w=900',
   galleta: 'https://images.unsplash.com/photo-1664854678365-ad59da72356c?auto=format&fit=crop&w=900&q=85',
-  torta: 'https://images.unsplash.com/photo-1793301946837-93d9a245e806?auto=format&fit=crop&w=1200&q=85',
+  torta: 'https://images.unsplash.com/photo-1762829667023-90021c63842a?auto=format&fit=crop&w=900&q=85',
 };
+function getProductImage(product) {
+  const texto = `${product.name || ''} ${product.desc || ''}`.toLowerCase();
+  if (product.cat === 'cupcake') {
+    if (texto.includes('red velvet')) return PRODUCT_IMAGES.cupcakeRedVelvet;
+    if (texto.includes('chocolate')) return PRODUCT_IMAGES.cupcakeChocolate;
+    if (texto.includes('vainilla')) return PRODUCT_IMAGES.cupcakeVainilla;
+  }
+  if (product.cat === 'brownie') {
+    if (texto.includes('dulce de leche') || texto.includes('manjar')) return PRODUCT_IMAGES.brownieDulceLeche;
+    return PRODUCT_IMAGES.brownieClasico;
+  }
+  if (product.cat === 'alfajor') {
+    return texto.includes('chocolate') ? PRODUCT_IMAGES.alfajorChocolate : PRODUCT_IMAGES.alfajorClasico;
+  }
+  if (product.cat === 'galleta') {
+    return texto.includes('avena') ? PRODUCT_IMAGES.galletaAvena : PRODUCT_IMAGES.galletaChocolate;
+  }
+  if (product.cat === 'torta') {
+    if (texto.includes('fresa') || texto.includes('frutilla') || texto.includes('strawberry')) return PRODUCT_IMAGES.tortaFresa;
+    if (texto.includes('chocolate') || texto.includes('keke')) return PRODUCT_IMAGES.tortaChocolate;
+    return PRODUCT_IMAGES.tortaPersonalizada;
+  }
+  return PRODUCT_IMAGES[product.cat] || PRODUCT_IMAGES.tortaPersonalizada;
+}
 const CATEGORY_LABELS = {cupcake:'Cupcake', brownie:'Brownie', alfajor:'Alfajor', galleta:'Galletas', torta:'Torta personalizada'};
 let orderSubmissionInProgress = false;
 
@@ -308,7 +344,7 @@ async function renderProducts(filter='todos'){
 
     card.innerHTML = `
       <div class="product-media ${p.media}">
-        <img src="${PRODUCT_IMAGE_BY_CATEGORY[p.cat] || PRODUCT_IMAGE_BY_CATEGORY.torta}" alt="Imagen ilustrativa de ${escapeHtml(p.name)}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+        <img src="${getProductImage(p)}" alt="Imagen ilustrativa de ${escapeHtml(p.name)}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
         <span class="product-image-fallback" aria-hidden="true" hidden>${p.icon}</span>
       </div>
 
