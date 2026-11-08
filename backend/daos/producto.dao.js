@@ -1,3 +1,4 @@
+// DAO de productos: concentra las consultas SQL del catálogo.
 const pool = require('../db');
 const SELECT = `SELECT id, cat, nombre, descripcion, precio, icono, personalizable, disponible, media FROM productos`;
 

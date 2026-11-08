@@ -1,3 +1,4 @@
+// Valida y adapta los productos entre el formato de la API y el de la base de datos.
 const productoDao = require('../daos/producto.dao');
 
 function toView(row) {

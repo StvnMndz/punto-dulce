@@ -1,3 +1,4 @@
+// Middleware que valida el JWT y limita endpoints a los roles autorizados.
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 

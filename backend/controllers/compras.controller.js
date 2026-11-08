@@ -1,3 +1,4 @@
+// Valida y coordina el registro, edición y eliminación de compras de insumos.
 const compraDao = require('../daos/compra.dao');
 
 exports.listar = async (_req, res) => {

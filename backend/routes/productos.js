@@ -1,3 +1,4 @@
+// Lectura pública del catálogo; los cambios requieren rol administrador o producción.
 const express = require('express');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const productosController = require('../controllers/productos.controller');

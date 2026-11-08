@@ -1,3 +1,4 @@
+// DAO de ventas: concentra SQL para registrar, buscar, actualizar y eliminar ventas.
 const pool = require('../db');
 
 module.exports = {
@@ -32,6 +33,7 @@ module.exports = {
     finally { connection.release(); }
   },
   async findAll({ q, desde, hasta, metodoPago, soloSemana } = {}) {
+    // Une ventas con pedidos para devolver el código visible del pedido asociado.
     const conditions = [];
     const params = [];
     if (q) {
@@ -48,6 +50,7 @@ module.exports = {
     return rows;
   },
   async findOrdersWithoutSales({ q, desde, hasta, metodoPago, soloSemana } = {}) {
+    // Recupera pedidos antiguos que no tienen una venta enlazada en la base de datos.
     if (metodoPago && metodoPago.toLowerCase() !== 'pendiente') return [];
     const conditions = ['NOT EXISTS (SELECT 1 FROM ventas v WHERE v.pedido_id = p.id OR v.id = p.codigo)'];
     const params = [];

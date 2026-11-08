@@ -1,3 +1,4 @@
+// Rutas para consultar y administrar insumos; requieren una sesión válida.
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const insumosController = require('../controllers/insumos.controller');

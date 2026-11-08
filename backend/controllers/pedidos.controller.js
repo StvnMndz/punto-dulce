@@ -1,3 +1,4 @@
+// Recibe pedidos públicos y las consultas/actualizaciones que realiza el personal.
 const crypto = require('crypto');
 const pedidoDao = require('../daos/pedido.dao');
 
@@ -14,6 +15,7 @@ const esMismoPedido = (existente, pedido) => {
     && JSON.stringify(items) === JSON.stringify(pedido.items);
 };
 
+// Valida el pedido público y solicita al DAO guardar pedido y venta en una transacción.
 exports.crear = async (req, res) => {
   try {
     const { nombre, telefono, tipo, direccion, fechaEntrega, notas, items, metodoPago } = req.body || {};
@@ -64,6 +66,7 @@ exports.crear = async (req, res) => {
   } catch (error) { console.error('Error al registrar pedido:', error); return res.status(500).json({ error: 'Error al registrar el pedido.' }); }
 };
 
+// Devuelve el estado de un pedido cuando coinciden el código y el teléfono.
 exports.seguimiento = async (req, res) => {
   const telefono = req.query.telefono;
   if (!telefono) return res.status(400).json({ error: 'Falta el teléfono.' });
@@ -74,6 +77,7 @@ exports.seguimiento = async (req, res) => {
   } catch (error) { console.error('Error al consultar pedido:', error); return res.status(500).json({ error: 'Error al consultar el pedido.' }); }
 };
 
+// Lista pedidos para el personal, aplicando texto, estado, tipo, fechas y rol.
 exports.listar = async (req, res) => {
   try {
     const { q, estado, tipo, desde, hasta } = req.query;
@@ -92,6 +96,7 @@ exports.listar = async (req, res) => {
   } catch (error) { console.error('Error al listar pedidos:', error); return res.status(500).json({ error: 'Error al listar pedidos.' }); }
 };
 
+// Cambia el estado del pedido según la secuencia válida del flujo de atención.
 exports.actualizarEstado = async (req, res) => {
   const { estado } = req.body || {};
   if (!ESTADOS.includes(estado)) return res.status(400).json({ error: 'Estado inválido.' });

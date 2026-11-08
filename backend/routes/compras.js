@@ -1,3 +1,4 @@
+// Rutas de compras, disponibles para administrador y personal de producción.
 const express = require('express');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const comprasController = require('../controllers/compras.controller');

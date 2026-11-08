@@ -1,3 +1,4 @@
+// Valida las operaciones de inventario y aplica los permisos de administrador/producción.
 const insumoDao = require('../daos/insumo.dao');
 
 function permitido(req) { return ['administrador', 'produccion'].includes(req.empleado?.rol); }

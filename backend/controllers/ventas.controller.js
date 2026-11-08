@@ -1,6 +1,8 @@
+// Recibe las solicitudes de ventas, valida datos y entrega respuestas a la API.
 const crypto = require('crypto');
 const ventaDao = require('../daos/venta.dao');
 
+// Registra una venta manual; los pedidos públicos crean su venta desde pedido.dao.
 exports.registrar = async (req, res) => {
   const { pedidoId, nombre, telefono, metodoPago, items, total } = req.body || {};
   if (!nombre || !Array.isArray(items) || items.length === 0) {
@@ -22,6 +24,7 @@ exports.registrar = async (req, res) => {
   } catch (error) { console.error('Error al registrar venta:', error); return res.status(500).json({ error: 'No se pudo registrar la venta' }); }
 };
 
+// Actualiza el cliente, el pago y los productos de una venta existente.
 exports.actualizar = async (req, res) => {
   const { nombre, telefono, metodoPago, items, pedidoId } = req.body || {};
   if (!nombre || !Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Completa el cliente y agrega al menos un producto' });
@@ -42,6 +45,7 @@ exports.actualizar = async (req, res) => {
   } catch (error) { console.error('Error al actualizar venta:', error); return res.status(500).json({ error: 'No se pudo actualizar la venta' }); }
 };
 
+// Elimina una venta después de verificar el alcance permitido para el rol.
 exports.eliminar = async (req, res) => {
   try {
     if (!await ventaDao.delete(req.params.id, req.empleado?.rol === 'ventas')) return res.status(404).json({ error: 'Venta no encontrada' });
@@ -49,6 +53,7 @@ exports.eliminar = async (req, res) => {
   } catch (error) { console.error('Error al eliminar venta:', error); return res.status(500).json({ error: 'No se pudo eliminar la venta' }); }
 };
 
+// Busca ventas con filtros y añade pedidos antiguos que aún no tienen venta asociada.
 exports.listar = async (req, res) => {
   try {
     const { q, desde, hasta, metodoPago } = req.query;

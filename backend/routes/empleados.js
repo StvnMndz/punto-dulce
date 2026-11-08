@@ -1,3 +1,4 @@
+// Rutas de personal; todas requieren sesión y rol administrador.
 const express = require('express');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const empleadosController = require('../controllers/empleados.controller');

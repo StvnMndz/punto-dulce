@@ -1,3 +1,4 @@
+// Crear pedido y consultar seguimiento son públicos; gestión exige sesión y rol.
 const express = require('express');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const pedidosController = require('../controllers/pedidos.controller');

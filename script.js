@@ -4,7 +4,7 @@
    los elementos de su página existen antes de usarlos.
 ========================================================= */
 
-/* ---------------- DATA ---------------- */
+/* Productos de respaldo, nombres de categorías y opciones de personalización. */
 const DEFAULT_PRODUCTS = [
   {id:'cup1', cat:'cupcake', name:'Cupcake Red Velvet', desc:'Bizcocho red velvet con frosting de queso crema.', price:6.5, icon:'🧁', media:'media-cupcake', disponible:true},
   {id:'cup2', cat:'cupcake', name:'Cupcake Chocolate', desc:'Cupcake de chocolate con ganache y chips.', price:6.0, icon:'🧁', media:'media-cupcake', disponible:true},
@@ -125,6 +125,7 @@ const ROLE_TABS = {
 };
 
 async function apiRequest(path, options = {}){
+  // Centraliza las llamadas HTTP al backend y adjunta el token si hay sesión.
   const headers = Object.assign({'Content-Type':'application/json'}, options.headers || {});
   const token = getToken();
   if(token) headers.Authorization = 'Bearer ' + token;
@@ -162,6 +163,7 @@ async function fetchAllEmployeeOrders(){
 }
 
 function renderOperationalAlerts(){
+  // Muestra alertas de inventario y operación en el panel del personal.
   const wrap = document.getElementById('operationalAlerts');
   if(!wrap || !currentEmployeeRole || currentEmployeeRole === 'pendiente') return;
   const cards = [];
@@ -253,6 +255,7 @@ function showToast(msg){
 }
 
 function initContactForm(){
+  // Valida la consulta y abre WhatsApp con el mensaje del cliente ya preparado.
   const form = document.getElementById('contactForm');
   if(!form) return;
   form.addEventListener('submit', event => {
@@ -278,6 +281,7 @@ function labelForCat(cat){
 }
 
 async function renderProducts(filter='todos'){
+  // Obtiene productos de la API y crea las tarjetas del catálogo.
   const grid = document.getElementById('productGrid');
 
   if(!grid) return;
@@ -383,6 +387,7 @@ function initCatalogFilters(){
 }
 
 function addSimpleToCart(p, cantidad = 1){
+  // Añade al carrito un producto sin opciones personalizadas.
   const cart = getCart();
 
   const existente = cart.find(item =>
@@ -452,6 +457,7 @@ function updateModalPrice(){
   if(el) el.textContent = `S/ ${currentCustomPrice().toFixed(2)}`;
 }
 function addCustomToCart(){
+  // Añade al carrito el producto personalizado con sus opciones y precio calculado.
   const metaParts = Object.keys(customSelection).map(key=>{
     const label = {tamano:'Tamaño', sabor:'Sabor', relleno:'Relleno', decoracion:'Decoración'}[key];
     return `${label}: ${CUSTOM_OPTIONS[key][customSelection[key]].label}`;
@@ -562,6 +568,7 @@ function changeCartQty(id, cambio){
 }
 
 async function submitOrder(){
+  // Envía el pedido; el backend registra su venta relacionada en la misma transacción.
 
   if(orderSubmissionInProgress) return;
 
@@ -744,6 +751,7 @@ async function submitOrder(){
    PÁGINA: seguimiento.html
 ========================================================= */
 async function renderOrders(){
+  // Consulta el estado del pedido usando el código y teléfono del cliente.
 
   const wrap = document.getElementById('ordersList');
 
@@ -916,6 +924,7 @@ async function renderOrders(){
    PÁGINA: empleado-login.html
 ========================================================= */
 function initEmployeeAuth(){
+  // Conecta el registro e inicio de sesión con los endpoints de autenticación.
   const loginForm = document.getElementById('loginForm');
   const registerForm = document.getElementById('registerForm');
   if(!loginForm && !registerForm) return;
@@ -1035,6 +1044,7 @@ function applyRolePermissions(rol){
 }
 
 async function initEmployeePanel(){
+  // Carga la sesión y los datos necesarios para mostrar el panel según el rol.
   const session = requireEmployeeSession();
   if(!session) return;
 
@@ -1233,6 +1243,7 @@ function initPanelTabs(){
 
 /* ---- Resumen / estadísticas de ventas ---- */
 async function computeStats(soloSemana){
+  // Calcula los totales que se muestran en el resumen del personal.
 
 const [respuestaPedidos, ventas] =
   await Promise.all([
@@ -1502,6 +1513,7 @@ async function renderStats(){
 
 }
 
+// Convierte una fecha a una clave para agruparla en las gráficas del administrador.
 function adminDateKey(value){
   if(!value) return '';
   const raw = String(value).slice(0, 10);
@@ -1515,6 +1527,7 @@ function adminDateLabel(key, options = { day:'2-digit', month:'2-digit' }){
   return new Date(`${key}T12:00:00`).toLocaleDateString('es-PE', options);
 }
 
+// Lee el período seleccionado para filtrar las métricas administrativas.
 function getAdminDashboardRange(){
   const mode = document.getElementById('adminPeriodFilter')?.value || 'all';
   if(mode === 'custom') return {
@@ -1557,6 +1570,7 @@ function renderAdminBars(elementId, entries, formatter = value => String(value))
   wrap.innerHTML = valid.map(([label, value]) => `<div class="admin-bar-row"><span class="admin-bar-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span><span class="admin-bar-track"><span class="admin-bar-fill" style="width:${Math.max(3, Number(value)/max*100)}%"></span></span><strong class="admin-bar-value">${escapeHtml(formatter(value))}</strong></div>`).join('');
 }
 
+// Dibuja las tarjetas, gráficas y tablas del dashboard de administrador.
 function renderAdminDashboard(){
   const root = document.getElementById('adminAnalytics');
   if(!root || currentEmployeeRole !== 'administrador') return;
@@ -1717,6 +1731,7 @@ function getSaleDetails(sale){
 }
 
 function filterSales(){
+  // Aplica texto, fechas, pago y el límite semanal del rol de ventas.
   const query = (document.getElementById('salesSearch')?.value || '').trim().toLowerCase();
   const from = document.getElementById('salesFrom')?.value || '';
   const to = document.getElementById('salesTo')?.value || '';
@@ -1732,6 +1747,7 @@ function filterSales(){
 }
 
 function renderFilteredSales(){
+  // Actualiza la tabla y los totales con las ventas que coinciden con los filtros.
   const tbody = document.getElementById('salesTableBody');
   if(!tbody) return;
   const sales = filterSales();
@@ -1767,6 +1783,7 @@ function renderFilteredSales(){
 }
 
 function exportSalesPdf(){
+  // Prepara el reporte de ventas y abre la impresión para guardarlo como PDF.
   const sales = filterSales();
   if(!sales.length){ showToast('No hay ventas para exportar con estos filtros'); return; }
   const reportWindow = window.open('', '_blank');

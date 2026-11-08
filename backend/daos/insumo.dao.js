@@ -1,3 +1,4 @@
+// DAO de insumos: concentra la lectura y modificación del inventario en MySQL/TiDB.
 const pool = require('../db');
 const SELECT = `SELECT id, nombre, cantidad, unidad, stock_minimo, proveedor, actualizado_at FROM insumos`;
 

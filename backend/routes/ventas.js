@@ -1,3 +1,4 @@
+// Lectura y mantenimiento de ventas requieren sesión de administrador o ventas.
 const express = require('express');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const ventasController = require('../controllers/ventas.controller');

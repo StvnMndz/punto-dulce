@@ -1,3 +1,4 @@
+// Controla el registro, inicio de sesión y consulta de la cuenta del empleado.
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const empleadoDao = require('../daos/empleado.dao');

@@ -1,3 +1,4 @@
+// Expone al administrador la lista de empleados y los cambios de rol/estado.
 const empleadoDao = require('../daos/empleado.dao');
 
 const ROLES_VALIDOS = ['pendiente', 'administrador', 'ventas', 'produccion'];

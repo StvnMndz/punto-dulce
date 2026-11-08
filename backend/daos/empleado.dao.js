@@ -1,3 +1,4 @@
+// DAO de empleados: aquí viven las consultas SQL de cuentas, roles y estados.
 const pool = require('../db');
 
 const camposPublicos = `id, nombre_completo, usuario, telefono, rol, activo, fecha_registro`;

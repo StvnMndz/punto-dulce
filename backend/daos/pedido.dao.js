@@ -1,7 +1,9 @@
+// DAO de pedidos: ejecuta el SQL y mantiene sincronizados pedidos y ventas.
 const pool = require('../db');
 
 module.exports = {
   async create(pedido) {
+    // Una transacción evita que quede pedido sin venta (o venta sin pedido).
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
