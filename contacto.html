@@ -36,7 +36,7 @@
   <div class="wrap">
     <div class="breadcrumb"><a href="index.html">Inicio</a> <span>/</span> <span>Contacto</span></div>
     <h1>Hablemos</h1>
-    <p>¿Tienes dudas sobre tu pedido, quieres coordinar un evento o dejarnos un mensaje? Escríbenos por aquí.</p>
+    <p>¿Tienes dudas sobre un pedido o quieres coordinar un evento? Escríbenos por WhatsApp o revisa las respuestas frecuentes.</p>
   </div>
 </section>
 <section>
@@ -46,7 +46,7 @@
         <h3>Información de contacto</h3>
         <div class="contact-row">
           <span class="ic">📱</span>
-          <div>WhatsApp<span>987 654 321</span></div>
+          <div>WhatsApp<span>987 654 321 · Atención directa</span></div>
         </div>
         <div class="contact-row">
           <span class="ic">✉️</span>
@@ -60,26 +60,49 @@
           <span class="ic">🕒</span>
           <div>Horario<span>Lun–Sáb 9:00 am–8:00 pm · Dom 10:00 am–4:00 pm</span></div>
         </div>
-        <div class="map-note">📍 Aquí puede ir un mapa embebido de tu local físico.</div>
+        <a class="btn btn-outline btn-full contact-chat-link" href="https://wa.me/51987654321" target="_blank" rel="noopener noreferrer">💬 Abrir chat de WhatsApp</a>
       </div>
 
       <div class="contact-card contact-form">
-        <h3>Envíanos un mensaje</h3>
+        <h3>Consulta por chat</h3>
+        <p class="contact-form-intro">Completa los datos y abriremos WhatsApp con tu consulta lista para enviar.</p>
+        <form id="contactForm">
         <div class="field">
           <label for="contNombre">Nombre</label>
-          <input type="text" id="contNombre" placeholder="Tu nombre">
+          <input type="text" id="contNombre" name="nombre" placeholder="Tu nombre" maxlength="100" autocomplete="name" required>
         </div>
         <div class="field">
           <label for="contCorreo">Correo o teléfono</label>
-          <input type="text" id="contCorreo" placeholder="¿Cómo te contactamos?">
+          <input type="text" id="contCorreo" name="contacto" placeholder="¿Cómo te contactamos?" maxlength="120" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="contTema">Tema de consulta</label>
+          <select id="contTema" name="tema" required>
+            <option value="">Selecciona un tema</option>
+            <option value="Pedido y seguimiento">Pedido y seguimiento</option>
+            <option value="Productos y disponibilidad">Productos y disponibilidad</option>
+            <option value="Delivery y pagos">Delivery y pagos</option>
+            <option value="Evento o pedido por encargo">Evento o pedido por encargo</option>
+            <option value="Otra consulta">Otra consulta</option>
+          </select>
         </div>
         <div class="field">
           <label for="contMensaje">Mensaje</label>
-          <textarea id="contMensaje" placeholder="Cuéntanos qué necesitas..."></textarea>
+          <textarea id="contMensaje" name="mensaje" placeholder="Cuéntanos qué necesitas..." minlength="5" maxlength="1000" required></textarea>
         </div>
-        <button class="btn btn-primary btn-full" onclick="showToast('¡Gracias! Te responderemos pronto.')">Enviar mensaje</button>
+        <button class="btn btn-primary btn-full" type="submit">Continuar por WhatsApp</button>
+        </form>
       </div>
     </div>
+    <section class="contact-faq" aria-labelledby="faqTitle">
+      <div class="contact-faq-heading"><span class="dashboard-eyebrow">AYUDA PARA CLIENTES</span><h2 id="faqTitle">Preguntas frecuentes</h2><p>Respuestas rápidas a las consultas más comunes.</p></div>
+      <div class="contact-faq-list">
+        <details class="contact-faq-item"><summary>¿Cómo hago un pedido?</summary><p>Explora el catálogo, agrega los productos al pedido y completa tus datos en la página “Hacer pedido”.</p></details>
+        <details class="contact-faq-item"><summary>¿Cómo consulto el estado de mi pedido?</summary><p>Entra a “Mis pedidos” e ingresa el código de pedido y el teléfono usado al registrarlo.</p></details>
+        <details class="contact-faq-item"><summary>¿Puedo pedir para un evento o una fecha especial?</summary><p>Sí. Selecciona “Evento o pedido por encargo” en el formulario y cuéntanos la fecha, cantidad y detalles que necesitas.</p></details>
+        <details class="contact-faq-item"><summary>¿Qué hago si necesito cambiar o consultar algo de mi pedido?</summary><p>Escríbenos por WhatsApp e incluye tu código de pedido para que podamos orientarte.</p></details>
+      </div>
+    </section>
   </div>
 </section>
 <footer>
@@ -101,7 +124,7 @@
       <div>
         <h4>Contacto</h4>
         <ul>
-          <li>WhatsApp: 987 654 321</li>
+          <li><a href="https://wa.me/51987654321" target="_blank" rel="noopener noreferrer">WhatsApp: 987 654 321</a></li>
           <li>correo@puntodulce.pe</li>
           <li>Lima, Perú</li>
         </ul>

@@ -254,6 +254,24 @@ function showToast(msg){
   toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
 }
 
+function initContactForm(){
+  const form = document.getElementById('contactForm');
+  if(!form) return;
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    if(!form.reportValidity()) return;
+    const nombre = document.getElementById('contNombre').value.trim();
+    const contacto = document.getElementById('contCorreo').value.trim();
+    const tema = document.getElementById('contTema').value;
+    const mensaje = document.getElementById('contMensaje').value.trim();
+    const texto = `Hola, soy ${nombre}.\nMi contacto es: ${contacto}.\nTema: ${tema}.\nConsulta: ${mensaje}`;
+    const url = `https://wa.me/51987654321?text=${encodeURIComponent(texto)}`;
+    const chatWindow = window.open(url, '_blank');
+    if(chatWindow) chatWindow.opener = null;
+    else window.location.href = url;
+  });
+}
+
 /* =========================================================
    PÁGINA: catalogo.html
 ========================================================= */
@@ -2819,6 +2837,7 @@ async function advanceEmployeeOrder(
 ========================================================= */
 document.addEventListener('DOMContentLoaded', ()=>{
   initMobileMenu();
+  initContactForm();
   updateCartBadge();
   initCatalogFilters();   // no-op si no existe #filters
   renderCartPanel();      // no-op si no existe #cartItems

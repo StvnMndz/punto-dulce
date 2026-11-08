@@ -282,6 +282,19 @@ section{padding:64px 0;}
 .contact-row .ic{font-size:1.2rem;}
 .contact-row div span{display:block;font-size:.78rem;color:#7a6155;}
 .contact-form .field{margin-bottom:14px;}
+.contact-form-intro{margin:-6px 0 18px;color:#806d64;font-size:.86rem;line-height:1.5;}
+.contact-chat-link{margin-top:8px;text-decoration:none;}
+.contact-faq{display:grid;grid-template-columns:.8fr 1.2fr;gap:38px;align-items:start;margin-top:38px;padding:30px;background:#fff;border:1px solid var(--line);border-radius:var(--radius-card);}
+.contact-faq-heading .dashboard-eyebrow{margin:0 0 8px;color:var(--berry);}
+.contact-faq-heading h2{margin:0 0 8px;color:var(--berry-dark);font-family:'Fraunces',serif;font-size:1.5rem;}
+.contact-faq-heading p{margin:0;color:#806d64;font-size:.9rem;line-height:1.5;}
+.contact-faq-list{display:grid;gap:10px;}
+.contact-faq-item{padding:0 16px;border:1px solid var(--line);border-radius:13px;background:#fffdfa;}
+.contact-faq-item summary{position:relative;padding:15px 26px 15px 0;color:var(--choco);font-weight:700;font-size:.9rem;cursor:pointer;list-style:none;}
+.contact-faq-item summary::-webkit-details-marker{display:none;}
+.contact-faq-item summary::after{content:'+';position:absolute;right:0;top:12px;color:var(--berry);font-size:1.25rem;}
+.contact-faq-item[open] summary::after{content:'−';}
+.contact-faq-item p{margin:0;padding:0 0 15px;color:#6e5a50;font-size:.85rem;line-height:1.55;}
 .map-note{
   margin-top:18px;border:1.5px dashed var(--line);border-radius:16px;padding:20px;text-align:center;
   color:#7a6155;font-size:.86rem;background:var(--cream);
@@ -539,6 +552,7 @@ tr.row-warning td{background:rgba(238,180,201,.25);}
   .hero-art{height:220px;order:-1;}
   .why-grid, .about-grid, .how-grid, .roles-grid, .split-block, .contact-layout{grid-template-columns:1fr;}
   .order-layout{grid-template-columns:1fr;}
+  .contact-faq{grid-template-columns:1fr;gap:18px;}
   .footer-grid{grid-template-columns:1fr 1fr;}
   .quick-cats{grid-template-columns:repeat(3,1fr);}
 }
