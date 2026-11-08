@@ -17,6 +17,14 @@ const DEFAULT_PRODUCTS = [
   {id:'gal2', cat:'galleta', name:'Galletas Chips de Chocolate', desc:'Galletas crocantes con chips de chocolate, caja x6.', price:10.0, icon:'🍪', media:'media-galleta', disponible:true},
   {id:'tor1', cat:'torta', name:'Torta Personalizada', desc:'Diseña tu torta: tamaño, sabor, relleno y decoración a elección.', price:60, icon:'🎂', media:'media-torta', customizable:true, disponible:true},
 ];
+// Fotografías ilustrativas de Unsplash para cada categoría del catálogo.
+const PRODUCT_IMAGE_BY_CATEGORY = {
+  cupcake: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=900&q=85',
+  brownie: 'https://images.unsplash.com/photo-1723476359253-9a4d0457c82f?auto=format&fit=crop&w=900&q=85',
+  alfajor: 'https://images.unsplash.com/photo-1664854678365-ad59da72356c?auto=format&fit=crop&w=900&q=85',
+  galleta: 'https://images.unsplash.com/photo-1664854678365-ad59da72356c?auto=format&fit=crop&w=900&q=85',
+  torta: 'https://images.unsplash.com/photo-1793301946837-93d9a245e806?auto=format&fit=crop&w=1200&q=85',
+};
 const CATEGORY_LABELS = {cupcake:'Cupcake', brownie:'Brownie', alfajor:'Alfajor', galleta:'Galletas', torta:'Torta personalizada'};
 let orderSubmissionInProgress = false;
 
@@ -299,7 +307,10 @@ async function renderProducts(filter='todos'){
     card.className = 'product-card';
 
     card.innerHTML = `
-      <div class="product-media ${p.media}">${p.icon}</div>
+      <div class="product-media ${p.media}">
+        <img src="${PRODUCT_IMAGE_BY_CATEGORY[p.cat] || PRODUCT_IMAGE_BY_CATEGORY.torta}" alt="Imagen ilustrativa de ${escapeHtml(p.name)}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+        <span class="product-image-fallback" aria-hidden="true" hidden>${p.icon}</span>
+      </div>
 
       <div class="product-body">
         <span class="product-tag">${labelForCat(p.cat)}</span>

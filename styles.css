@@ -126,11 +126,7 @@ header{
   opacity:.55;filter:blur(6px);border-radius:50%;
 }
 .hero-cakes{position:relative;height:100%;display:flex;align-items:center;justify-content:center;font-size:6.4rem;}
-.hero-cakes span{position:absolute;filter:drop-shadow(0 12px 18px rgba(74,26,43,.25));}
-.hero-cakes span:nth-child(1){top:5%;left:8%;font-size:3.2rem;transform:rotate(-8deg);}
-.hero-cakes span:nth-child(2){bottom:8%;left:20%;font-size:3.6rem;transform:rotate(6deg);}
-.hero-cakes span:nth-child(3){top:20%;right:6%;font-size:3.4rem;transform:rotate(10deg);}
-.hero-cakes span:nth-child(4){bottom:0;right:22%;font-size:2.6rem;transform:rotate(-14deg);}
+.hero-cakes img{width:88%;height:92%;object-fit:cover;border-radius:42% 42% 28px 28px;box-shadow:0 24px 55px rgba(74,26,43,.22);transform:rotate(2deg);}
 
 /* ---------- TARJETAS DE CATEGORÍAS (inicio) ---------- */
 .quick-cats{display:grid;grid-template-columns:repeat(5,1fr);gap:18px;}
@@ -183,7 +179,11 @@ section{padding:64px 0;}
   display:flex;flex-direction:column;transition:transform .18s ease, box-shadow .18s ease;
 }
 .product-card:hover{transform:translateY(-4px);box-shadow:var(--shadow);}
-.product-media{height:140px;display:flex;align-items:center;justify-content:center;font-size:3.6rem;}
+.product-media{height:190px;overflow:hidden;background:#f7e8df;}
+.product-media img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .35s ease;}
+.product-image-fallback{height:100%;align-items:center;justify-content:center;font-size:3.6rem;}
+.product-image-fallback:not([hidden]){display:flex;}
+.product-card:hover .product-media img{transform:scale(1.05);}
 .product-body{padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;flex:1;}
 .product-tag{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--berry);font-weight:700;}
 .product-body h3{font-size:1.18rem;}
