@@ -505,6 +505,7 @@ footer ul a:hover{color:var(--white);}
 table.admin-table{width:100%;border-collapse:collapse;min-width:560px;}
 table.sales-table{min-width:980px;}
 table.purchase-table{min-width:860px;}
+table.contact-inquiries-table{min-width:980px;}
 table.admin-table th{text-align:left;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:#7a6155;padding:14px 10px;border-bottom:2px solid var(--line);}
 table.admin-table td{padding:14px 10px;border-bottom:1px solid var(--line);font-size:.9rem;vertical-align:middle;}
 table.admin-table tr:last-child td{border-bottom:none;}

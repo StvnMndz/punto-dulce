@@ -163,9 +163,9 @@ const ROLE_LABELS = {
 };
 // Qué pestañas del panel puede ver cada rol una vez asignado.
 const ROLE_TABS = {
-  administrador: ['resumen','ventas','productos','insumos','pedidos','personal'],
-  ventas: ['resumen','ventas','pedidos'],
-  produccion: ['insumos','productos'],
+  administrador: ['resumen','ventas','productos','insumos','pedidos','personal','consultas'],
+  ventas: ['resumen','ventas','pedidos','consultas'],
+  produccion: ['insumos','productos','consultas'],
 };
 
 async function apiRequest(path, options = {}){
@@ -193,6 +193,7 @@ let productsCache = [];
 let salesCache = [];
 let purchaseOrdersCache = [];
 let employeeOrdersCache = [];
+let contactInquiriesCache = [];
 let currentAdminDashboardReport = null;
 
 async function fetchAllEmployeeOrders(){
@@ -298,22 +299,37 @@ function showToast(msg){
   toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
 }
 
-function initContactForm(){
-  // Valida la consulta y abre WhatsApp con el mensaje del cliente ya preparado.
+async function initContactForm(){
+  // Envía la consulta al sistema para guardarla y compartirla con el personal.
   const form = document.getElementById('contactForm');
   if(!form) return;
-  form.addEventListener('submit', event => {
+  const button = document.getElementById('contactSubmitButton');
+  const status = document.getElementById('contactFormStatus');
+
+  form.addEventListener('submit', async event => {
     event.preventDefault();
     if(!form.reportValidity()) return;
-    const nombre = document.getElementById('contNombre').value.trim();
-    const contacto = document.getElementById('contCorreo').value.trim();
-    const tema = document.getElementById('contTema').value;
-    const mensaje = document.getElementById('contMensaje').value.trim();
-    const texto = `Hola, soy ${nombre}.\nMi contacto es: ${contacto}.\nTema: ${tema}.\nConsulta: ${mensaje}`;
-    const url = `https://wa.me/51994361475?text=${encodeURIComponent(texto)}`;
-    const chatWindow = window.open(url, '_blank');
-    if(chatWindow) chatWindow.opener = null;
-    else window.location.href = url;
+
+    const payload = {
+      nombre: document.getElementById('contNombre').value.trim(),
+      contacto: document.getElementById('contCorreo').value.trim(),
+      tema: document.getElementById('contTema').value,
+      mensaje: document.getElementById('contMensaje').value.trim()
+    };
+    if(button){ button.disabled = true; button.textContent = 'Enviando consulta…'; }
+    if(status) status.textContent = '';
+
+    try {
+      await apiRequest('/consultas', { method:'POST', body:JSON.stringify(payload) });
+      form.reset();
+      if(status) status.textContent = 'Consulta enviada correctamente. El equipo de Punto Dulce podrá verla desde el panel del personal.';
+      showToast('Consulta enviada al equipo.');
+    } catch(error) {
+      if(status) status.textContent = error.message || 'No se pudo enviar la consulta. Inténtalo nuevamente.';
+      showToast('No se pudo enviar la consulta.');
+    } finally {
+      if(button){ button.disabled = false; button.textContent = 'Enviar consulta'; }
+    }
   });
 }
 
@@ -1096,6 +1112,11 @@ async function initEmployeePanel(){
   const tienePermisos = applyRolePermissions(empleado.rol);
 
   initPanelTabs();
+  if(tienePermisos){
+    document.getElementById('btnRefreshConsultas')?.addEventListener('click', loadContactInquiries);
+    document.getElementById('contactInquiriesSearch')?.addEventListener('input', renderContactInquiries);
+    await loadContactInquiries();
+  }
   document.querySelector('[data-dashboard-panel]')?.addEventListener('click', event => {
     const panel = event.currentTarget.dataset.dashboardPanel;
     document.querySelector(`.panel-tab[data-panel="${panel}"]`)?.click();
@@ -1172,6 +1193,46 @@ async function initEmployeePanel(){
   document.getElementById('saleForm').addEventListener('submit', submitManualSale);
 
   if(!tienePermisos) return;
+}
+
+/* ---- Consultas de clientes: bandeja compartida del personal ---- */
+function renderContactInquiries(){
+  const tbody = document.getElementById('contactInquiriesBody');
+  const count = document.getElementById('contactInquiriesCount');
+  if(!tbody) return;
+
+  const query = (document.getElementById('contactInquiriesSearch')?.value || '').trim().toLocaleLowerCase('es');
+  const visibles = contactInquiriesCache.filter(consulta =>
+    [consulta.nombre, consulta.contacto, consulta.tema, consulta.mensaje]
+      .some(value => String(value || '').toLocaleLowerCase('es').includes(query))
+  );
+
+  if(count) count.textContent = `${visibles.length} de ${contactInquiriesCache.length} consultas`;
+  if(!visibles.length){
+    tbody.innerHTML = `<tr><td colspan="5" class="hint" style="padding:16px 0;">${contactInquiriesCache.length ? 'No hay consultas que coincidan con la búsqueda.' : 'Todavía no hay consultas de clientes.'}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = visibles.map(consulta => {
+    const fecha = consulta.created_at ? new Date(consulta.created_at).toLocaleString('es-PE') : '—';
+    return `<tr>
+      <td>${escapeHtml(fecha)}</td><td>${escapeHtml(consulta.nombre)}</td>
+      <td>${escapeHtml(consulta.contacto)}</td><td>${escapeHtml(consulta.tema)}</td>
+      <td style="white-space:pre-wrap;min-width:260px;">${escapeHtml(consulta.mensaje)}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadContactInquiries(){
+  const tbody = document.getElementById('contactInquiriesBody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" class="hint" style="padding:16px 0;">Cargando consultas…</td></tr>';
+  try {
+    contactInquiriesCache = await apiRequest('/consultas');
+    renderContactInquiries();
+  } catch(error) {
+    tbody.innerHTML = `<tr><td colspan="5" class="hint" style="padding:16px 0;">No se pudieron cargar las consultas. ${escapeHtml(error.message)}</td></tr>`;
+  }
 }
 
 /* ---- Personal: asignación de roles (solo administrador) ---- */

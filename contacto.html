@@ -64,8 +64,8 @@
       </div>
 
       <div class="contact-card contact-form">
-        <h3>Consulta por chat</h3>
-        <p class="contact-form-intro">Completa los datos y abriremos WhatsApp con tu consulta lista para enviar.</p>
+        <h3>Enviar una consulta</h3>
+        <p class="contact-form-intro">Completa el formulario. Tu mensaje llegará al equipo de Punto Dulce para que cualquier trabajador pueda atenderlo.</p>
         <form id="contactForm">
         <div class="field">
           <label for="contNombre">Nombre</label>
@@ -90,7 +90,8 @@
           <label for="contMensaje">Mensaje</label>
           <textarea id="contMensaje" name="mensaje" placeholder="Cuéntanos qué necesitas..." minlength="5" maxlength="1000" required></textarea>
         </div>
-        <button class="btn btn-primary btn-full" type="submit">Continuar por WhatsApp</button>
+        <button class="btn btn-primary btn-full" id="contactSubmitButton" type="submit">Enviar consulta</button>
+        <p class="hint" id="contactFormStatus" role="status" aria-live="polite"></p>
         </form>
       </div>
     </div>

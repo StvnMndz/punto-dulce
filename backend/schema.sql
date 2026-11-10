@@ -222,3 +222,14 @@ CREATE TABLE IF NOT EXISTS pedidos (
   INDEX idx_cliente (cliente_nombre),
   INDEX idx_created (created_at)
 );
+
+-- Consultas enviadas por clientes desde el formulario público.
+CREATE TABLE IF NOT EXISTS consultas (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  contacto VARCHAR(120) NOT NULL,
+  tema VARCHAR(80) NOT NULL,
+  mensaje TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_consultas_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

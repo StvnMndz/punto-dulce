@@ -40,6 +40,7 @@
       <button class="panel-tab" data-panel="productos">🧁 Productos</button>
       <button class="panel-tab" data-panel="pedidos">📦 Pedidos</button>
       <button class="panel-tab" data-panel="personal">👥 Personal</button>
+      <button class="panel-tab" data-panel="consultas">✉️ Consultas</button>
     </div>
     <div class="operational-alerts" id="operationalAlerts" role="status" aria-live="polite" style="display:none;"></div>
 
@@ -232,6 +233,27 @@
             <tr><th>Código</th><th>Cliente</th><th>Tipo</th><th>Total</th><th>Estado</th><th>Acciones</th></tr>
           </thead>
           <tbody id="employeeOrdersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ================= CONSULTAS DE CLIENTES (todo el personal asignado) ================= -->
+    <div class="panel-section" id="panel-consultas">
+      <div class="panel-section-head">
+        <div>
+          <h2>Consultas de clientes</h2>
+          <p>Mensajes enviados desde el formulario público, disponibles para administración, ventas y almacén/producción.</p>
+        </div>
+        <button class="btn btn-outline btn-small" id="btnRefreshConsultas" type="button">↻ Actualizar</button>
+      </div>
+      <div class="panel-filters">
+        <label class="filter-search"><span>Buscar consulta</span><input id="contactInquiriesSearch" type="search" placeholder="Nombre, contacto, tema o mensaje"></label>
+      </div>
+      <p class="filter-result-count" id="contactInquiriesCount" aria-live="polite"></p>
+      <div class="admin-table-wrap">
+        <table class="admin-table contact-inquiries-table">
+          <thead><tr><th>Fecha</th><th>Cliente</th><th>Contacto</th><th>Tema</th><th>Mensaje</th></tr></thead>
+          <tbody id="contactInquiriesBody"></tbody>
         </table>
       </div>
     </div>
